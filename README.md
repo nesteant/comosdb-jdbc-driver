@@ -1,2 +1,2 @@
 # comosdb-jdbc-driver
-jdbc driver for cosmosdb database
+jdbc driver for cosmosdb documentdb database
