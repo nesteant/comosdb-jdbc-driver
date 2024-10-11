@@ -74,8 +74,21 @@ public class CosmosDbResultSet implements ResultSet {
     @Override
     public String getString(int columnIndex) throws SQLException {
         log.info("getString {} {}", columnIndex, currentRowIndex);
+        CosmosRow cosmosRowRef = rows.get(0);
         CosmosRow cosmosRow = rows.get(currentRowIndex);
-        Pair<String, Object> pair = cosmosRow.getParsed().get(columnIndex - 1);
+        List<Pair<String, Object>> parsedRef = cosmosRowRef.getParsed();
+        List<Pair<String, Object>> parsed = cosmosRow.getParsed();
+        if (columnIndex > parsedRef.size()) {
+           return null;
+        }
+        Pair<String, Object> pairRef = parsedRef.get(columnIndex - 1);
+        Pair<String, Object> pair = parsed.stream().filter(p -> p.getLeft().equals(pairRef.getLeft()))
+                .findFirst()
+                .orElse(null);
+        if (pair == null) {
+            return null;
+        }
+
         Object right = pair.getRight();
         if (right == null) {
             log.warn("getString NULL {} {} {}", columnIndex, currentRowIndex, pair);

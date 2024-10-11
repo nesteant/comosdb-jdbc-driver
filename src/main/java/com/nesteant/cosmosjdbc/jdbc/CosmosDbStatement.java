@@ -21,6 +21,8 @@ public class CosmosDbStatement implements Statement {
     private static final Logger log = LoggerFactory.getLogger(CosmosDbStatement.class);
     protected CosmosDbConnection connection;
 
+    protected int maxRows = 20;
+    protected int fetchSize = 20;
     protected CosmosDbResultSet resultSet;
 
     public CosmosDbStatement(CosmosDbConnection connection) {
@@ -71,12 +73,13 @@ public class CosmosDbStatement implements Statement {
     @Override
     public int getMaxRows() throws SQLException {
         log.info("Getting max rows");
-        return 0;
+        return maxRows;
     }
 
     @Override
     public void setMaxRows(int max) throws SQLException {
         log.info("Setting max rows: {}", max);
+        maxRows = max;
     }
 
     @Override
@@ -102,13 +105,13 @@ public class CosmosDbStatement implements Statement {
 
     @Override
     public SQLWarning getWarnings() throws SQLException {
-//        log.info("Getting warnings");
+        log.info("Getting warnings");
         return null;
     }
 
     @Override
     public void clearWarnings() throws SQLException {
-//        log.info("Clearing warnings");
+        log.info("Clearing warnings");
     }
 
     @Override
@@ -121,6 +124,7 @@ public class CosmosDbStatement implements Statement {
         log.info("Executing with no params: {}", sql);
         CosmosQueryRequestOptions options = new CosmosQueryRequestOptions();
 
+        log.info(sql);
         CosmosSql cosmosSql = transformSql(sql);
         CosmosPagedIterable<Object> objects = connection.currentDatabase.getContainer(cosmosSql.getContainer())
                 .queryItems(cosmosSql.getSql(), options, Object.class);
@@ -163,12 +167,13 @@ public class CosmosDbStatement implements Statement {
     @Override
     public void setFetchSize(int rows) throws SQLException {
         log.info("Setting fetch size: {}", rows);
+        this.fetchSize = rows;
     }
 
     @Override
     public int getFetchSize() throws SQLException {
         log.info("Getting fetch size");
-        return 0;
+        return fetchSize;
     }
 
     @Override
@@ -319,11 +324,10 @@ public class CosmosDbStatement implements Statement {
 
             PlainSelect plainSelect = select.getPlainSelect();
             Table table = (Table) plainSelect.getFromItem();
-            String tableName = table.getName();
+            String tableName = table.getName().replaceAll("\"", "");
             String dbLinkName = table.getDBLinkName();
             String schemaName = table.getSchemaName();
             String alias = table.getAlias() != null ? table.getAlias().getName() : null;
-
             plainSelect.getSelectItems().stream().forEach(i -> {
                 Expression expr = i.getExpression();
 
@@ -336,8 +340,16 @@ public class CosmosDbStatement implements Statement {
             table.setAlias(null);
             table.setSchemaName(null);
             String cosmosSelect = plainSelect.toString();
-            log.info("Table: {} DBLinkName: {} SchemaName: {} Alias: {}. Cosmos sql {}", tableName, dbLinkName, schemaName, alias, cosmosSelect);
-            return new CosmosSql(select.toString(), tableName, connection.currentDatabase.getId());
+            Expression where = plainSelect.getWhere();
+            String basicQuery = "select * FROM c %s offset %d limit %d";
+            String whereString = "";
+            if (where != null) {
+                whereString += " WHERE " + where;
+            }
+
+            String sql1 = String.format(basicQuery, whereString, 0, Math.max(maxRows, 100));
+            log.info("Table: {} DBLinkName: {} SchemaName: {} Alias: {}. Cosmos sql {}", tableName, dbLinkName, schemaName, alias, sql1);
+            return new CosmosSql(sql1, tableName, connection.currentDatabase.getId());
         }
 
         throw new SQLException("Unsupported SQL statement: " + sql);

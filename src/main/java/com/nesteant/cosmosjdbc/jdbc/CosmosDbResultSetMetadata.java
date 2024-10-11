@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.Objects;
 
 @Slf4j
 public class CosmosDbResultSetMetadata implements ResultSetMetaData {
@@ -106,9 +107,40 @@ public class CosmosDbResultSetMetadata implements ResultSetMetaData {
         return "";
     }
 
+    private boolean isNumeric(String value) {
+        try {
+            Double.parseDouble(value);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    private boolean isBoolean(String value) {
+        return Objects.equals(value, "true") || Objects.equals(value, "false");
+    }
+
+    private boolean isIsoDate(String value) {
+        return value.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z");
+    }
+
     @Override
     public int getColumnType(int column) throws SQLException {
         log.info("Getting getColumnType from result set: {}", column);
+        String v = resultSet.columns.get(column - 1);
+
+        if (isNumeric(v)) {
+            return v.contains(".") ? Types.NUMERIC : Types.INTEGER;
+        }
+
+        if (isBoolean(v)) {
+            return Types.BOOLEAN;
+        }
+
+        if (isIsoDate(v)) {
+            return Types.TIMESTAMP;
+        }
+
         return Types.VARCHAR;
     }
 
