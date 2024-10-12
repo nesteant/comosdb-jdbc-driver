@@ -39,7 +39,7 @@ public class SimpleCosmosSqlResultSet implements CosmosSqlResultSet {
     }
 
     public int getColumnType(int column) {
-        log.info("getColumnType {}", column);
+//        log.info("getColumnType {}", column);
         CosmosSqlColumn cosmosSqlColumn = columnsIndexMap.get(column);
         if (cosmosSqlColumn == null) {
             log.error("Column not found: {}", this.localItems);
@@ -48,70 +48,71 @@ public class SimpleCosmosSqlResultSet implements CosmosSqlResultSet {
     }
 
     private int getType(Object obj) {
-        log.info("getType {}", obj != null ? obj.getClass() : null);
+//        log.info("getType {}", obj != null ? obj.getClass() : null);
         if (obj instanceof Integer) {
-            log.info("getType {}", Types.INTEGER);
+//            log.info("getType {}", Types.INTEGER);
             return Types.INTEGER;
         }
 
         if (obj == null) {
-            log.info("getType {}", Types.NULL);
+//            log.info("getType {}", Types.NULL);
             return Types.NULL;
         }
 
         if (obj instanceof Long) {
-            log.info("getType {}", Types.BIGINT);
+//            log.info("getType {}", Types.BIGINT);
             return Types.BIGINT;
         }
 
         if (obj instanceof Double) {
-            log.info("getType {}", Types.DOUBLE);
+//            log.info("getType {}", Types.DOUBLE);
             return Types.DOUBLE;
         }
 
         if (obj instanceof Float) {
-            log.info("getType {}", Types.FLOAT);
+//            log.info("getType {}", Types.FLOAT);
             return Types.FLOAT;
         }
 
         if (obj instanceof BigDecimal) {
-            log.info("getType {}", Types.DECIMAL);
+//            log.info("getType {}", Types.DECIMAL);
             return Types.DECIMAL;
         }
 
         if (obj instanceof Date) {
-            log.info("getType {}", Types.DATE);
+//            log.info("getType {}", Types.DATE);
             return Types.DATE;
         }
 
         if (obj instanceof Time) {
-            log.info("getType {}", Types.TIME);
+//            log.info("getType {}", Types.TIME);
             return Types.TIME;
         }
 
         if (obj instanceof Timestamp) {
-            log.info("getType {}", Types.TIMESTAMP);
+//            log.info("getType {}", Types.TIMESTAMP);
             return Types.TIMESTAMP;
         }
 
         if (obj instanceof Boolean) {
-            log.info("getType {}", Types.BOOLEAN);
+//            log.info("getType {}", Types.BOOLEAN);
             return Types.BOOLEAN;
         }
 
         if (obj instanceof byte[]) {
-            log.info("getType {}", Types.BINARY);
+//            log.info("getType {}", Types.BINARY);
             return Types.BINARY;
         }
 
         if (obj instanceof URL) {
-            log.info("getType {}", Types.DATALINK);
+//            log.info("getType {}", Types.DATALINK);
             return Types.DATALINK;
         }
 
-        if (obj.toString().contains("T")) {
+        String string = obj.toString();
+        if (string.contains("T") && string.contains(":") && string.contains("-")) {
             try {
-                OffsetDateTime.parse(obj.toString());
+                OffsetDateTime.parse(string);
                 return Types.TIMESTAMP;
             } catch (Exception ignored) {
             }
@@ -144,7 +145,7 @@ public class SimpleCosmosSqlResultSet implements CosmosSqlResultSet {
     }
 
     private boolean hasNext() {
-        return localItems.size() - 1 > currentRowIndex;
+        return localItems.size() - 1 >= currentRowIndex;
     }
 
     private Object getValue(int columnIndex) {
@@ -157,9 +158,9 @@ public class SimpleCosmosSqlResultSet implements CosmosSqlResultSet {
 
     @Override
     public boolean next() throws SQLException {
-        if (localItems.size() - 1 > currentRowIndex) {
+        if (hasNext()) {
             currentRowIndex++;
-            log.info("found next row: {}", localItems.get(currentRowIndex).toString());
+//            log.info("found next row: {}", currentRowIndex);
         }
         return hasNext();
     }
@@ -584,7 +585,7 @@ public class SimpleCosmosSqlResultSet implements CosmosSqlResultSet {
 
     @Override
     public int getType() throws SQLException {
-        log.info("getType");
+//        log.info("getType");
         return ResultSet.TYPE_FORWARD_ONLY;
     }
 

@@ -3,7 +3,6 @@ package com.nesteant.cosmosjdbc.jdbc;
 import com.azure.cosmos.models.CosmosContainerProperties;
 import com.azure.cosmos.models.CosmosQueryRequestOptions;
 import com.azure.cosmos.util.CosmosPagedIterable;
-import com.nesteant.cosmosjdbc.jdbc.models.CosmosRow;
 import com.nesteant.cosmosjdbc.jdbc.models.CosmosSql;
 import com.nesteant.cosmosjdbc.jdbc.resultset.AsyncCosmosSqlResultSet;
 import com.nesteant.cosmosjdbc.jdbc.resultset.SimpleCosmosSqlResultSet;
@@ -17,8 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class CosmosDbStatement implements Statement {
 
@@ -45,7 +42,7 @@ public class CosmosDbStatement implements Statement {
         CosmosSql cosmosSql = transformSql(sql);
         CosmosPagedIterable<LinkedHashMap> objects = connection.currentDatabase.getContainer(cosmosSql.getContainer())
                 .queryItems(cosmosSql.getSql(), options, LinkedHashMap.class);
-        resultSet = AsyncCosmosSqlResultSet.create(connection, objects);
+        resultSet = AsyncCosmosSqlResultSet.create(connection, objects, this.fetchSize);
         return resultSet;
     }
 
@@ -132,10 +129,7 @@ public class CosmosDbStatement implements Statement {
         if (cosmosSql.getContainer() != null) {
             objects = connection.currentDatabase.getContainer(cosmosSql.getContainer())
                     .queryItems(cosmosSql.getSql(), options, LinkedHashMap.class);
-
-            List<CosmosRow> rows = objects.stream().map(CosmosRow::new).collect(Collectors.toList());
-            log.info("Query result: {}", rows);
-            resultSet = AsyncCosmosSqlResultSet.create(connection, objects);
+            resultSet = AsyncCosmosSqlResultSet.create(connection, objects, this.maxRows);
             return true;
         } else {
             CosmosPagedIterable<CosmosContainerProperties> cosmosContainerProperties = connection
@@ -361,17 +355,16 @@ public class CosmosDbStatement implements Statement {
             });
             table.setAlias(null);
             table.setSchemaName(null);
-            String cosmosSelect = plainSelect.toString();
             Expression where = plainSelect.getWhere();
-            String basicQuery = "select * FROM c %s offset %d limit %d";
+            String basicQuery = "select * FROM c";
             String whereString = "";
             if (where != null) {
                 whereString += " WHERE " + where;
             }
 
-            String sql1 = String.format(basicQuery, whereString, 0, Math.max(maxRows, 100));
-            log.info("Table: {} DBLinkName: {} SchemaName: {} Alias: {}. Cosmos sql {}", tableName, dbLinkName, schemaName, alias, sql1);
-            return new CosmosSql(sql1, tableName, connection.currentDatabase.getId());
+            String formattedSql = String.format(basicQuery, whereString, 0, fetchSize);
+            log.info("Table: {} DBLinkName: {} SchemaName: {} Alias: {}. Cosmos sql {}", tableName, dbLinkName, schemaName, alias, formattedSql);
+            return new CosmosSql(formattedSql, tableName, connection.currentDatabase.getId());
         }
 
         throw new SQLException("Unsupported SQL statement: " + sql);

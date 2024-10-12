@@ -54,64 +54,64 @@ public class AsyncCosmosSqlResultSet implements CosmosSqlResultSet {
     }
 
     private int getType(Object obj) {
-        log.info("getType {}", obj != null ? obj.getClass() : null);
+//        log.info("getType {}", obj != null ? obj.getClass() : null);
         if (obj instanceof Integer) {
-            log.info("getType {}", Types.INTEGER);
+//            log.info("getType {}", Types.INTEGER);
             return Types.INTEGER;
         }
 
         if (obj == null) {
-            log.info("getType {}", Types.NULL);
+//            log.info("getType {}", Types.NULL);
             return Types.NULL;
         }
 
         if (obj instanceof Long) {
-            log.info("getType {}", Types.BIGINT);
+//            log.info("getType {}", Types.BIGINT);
             return Types.BIGINT;
         }
 
         if (obj instanceof Double) {
-            log.info("getType {}", Types.DOUBLE);
+//            log.info("getType {}", Types.DOUBLE);
             return Types.DOUBLE;
         }
 
         if (obj instanceof Float) {
-            log.info("getType {}", Types.FLOAT);
+//            log.info("getType {}", Types.FLOAT);
             return Types.FLOAT;
         }
 
         if (obj instanceof BigDecimal) {
-            log.info("getType {}", Types.DECIMAL);
+//            log.info("getType {}", Types.DECIMAL);
             return Types.DECIMAL;
         }
 
         if (obj instanceof Date) {
-            log.info("getType {}", Types.DATE);
+//            log.info("getType {}", Types.DATE);
             return Types.DATE;
         }
 
         if (obj instanceof Time) {
-            log.info("getType {}", Types.TIME);
+//            log.info("getType {}", Types.TIME);
             return Types.TIME;
         }
 
         if (obj instanceof Timestamp) {
-            log.info("getType {}", Types.TIMESTAMP);
+//            log.info("getType {}", Types.TIMESTAMP);
             return Types.TIMESTAMP;
         }
 
         if (obj instanceof Boolean) {
-            log.info("getType {}", Types.BOOLEAN);
+//            log.info("getType {}", Types.BOOLEAN);
             return Types.BOOLEAN;
         }
 
         if (obj instanceof byte[]) {
-            log.info("getType {}", Types.BINARY);
+//            log.info("getType {}", Types.BINARY);
             return Types.BINARY;
         }
 
         if (obj instanceof URL) {
-            log.info("getType {}", Types.DATALINK);
+//            log.info("getType {}", Types.DATALINK);
             return Types.DATALINK;
         }
 
@@ -154,37 +154,41 @@ public class AsyncCosmosSqlResultSet implements CosmosSqlResultSet {
         this.connection = connection;
     }
 
-    private boolean hasNext() {
-        return localItems.size() - 1 > currentRowIndex;
-    }
-
     private Object getValue(int columnIndex) {
-        log.info("SearchValue {} {}", columnIndex, currentRowIndex);
+//        log.info("SearchValue {} {}", columnIndex, currentRowIndex);
         LinkedHashMap currentRow = localItems.get(currentRowIndex);
         CosmosSqlColumn cosmosSqlColumn = columnsIndexMap.get(columnIndex);
         String columnName = cosmosSqlColumn.getName();
         return currentRow.get(columnName);
     }
 
-    public static AsyncCosmosSqlResultSet create(CosmosDbConnection connection, CosmosPagedIterable<LinkedHashMap> iterable) {
+    public static AsyncCosmosSqlResultSet create(CosmosDbConnection connection, CosmosPagedIterable<LinkedHashMap> iterable, int fetchSize) {
         AsyncCosmosSqlResultSet set = new AsyncCosmosSqlResultSet(connection);
+        set.fetchSize = fetchSize;
         Iterable<FeedResponse<LinkedHashMap>> feedResponses = iterable.iterableByPage(set.fetchSize);
         set.iterator = feedResponses.iterator();
         set.localItems = set.fetchNext();
         return set;
     }
 
+    private boolean hasNext() {
+        boolean b = localItems.size() - 1 >= currentRowIndex;
+//        log.info("has next {}", b);
+        return b || iterator.hasNext();
+    }
+
     @Override
     public boolean next() throws SQLException {
+//        log.info("next");
         if (localItems.size() - 1 == currentRowIndex) {
-            currentRowIndex = 0;
+            log.info("fetch next page");
             List<LinkedHashMap> page = fetchNext();
             localItems.addAll(page);
         }
 
-        if (localItems.size() - 1 > currentRowIndex) {
+        if (hasNext()) {
             currentRowIndex++;
-            log.info("found next row: {}", localItems.get(currentRowIndex).toString());
+//            log.info("found next row: {}", currentRowIndex);
         }
         return hasNext();
     }
@@ -207,51 +211,51 @@ public class AsyncCosmosSqlResultSet implements CosmosSqlResultSet {
 
     @Override
     public String getString(int columnIndex) throws SQLException {
-        log.info("getString {} {}", columnIndex, currentRowIndex);
+//        log.info("getString {} {}", columnIndex, currentRowIndex);
         Object value = getValue(columnIndex);
         return value == null ? null : value.toString();
     }
 
     @Override
     public boolean getBoolean(int columnIndex) throws SQLException {
-        log.info("getBoolean {} {}", columnIndex, currentRowIndex);
-        return false;
+//        log.info("getBoolean {} {}", columnIndex, currentRowIndex);
+        return (boolean) getValue(columnIndex);
     }
 
     @Override
     public byte getByte(int columnIndex) throws SQLException {
-        log.info("getByte {} {}", columnIndex, currentRowIndex);
-        return 0;
+//        log.info("getByte {} {}", columnIndex, currentRowIndex);
+        return (byte) getValue(columnIndex);
     }
 
     @Override
     public short getShort(int columnIndex) throws SQLException {
-        log.info("getShort {} {}", columnIndex, currentRowIndex);
-        return 0;
+//        log.info("getShort {} {}", columnIndex, currentRowIndex);
+        return (short) getValue(columnIndex);
     }
 
     @Override
     public int getInt(int columnIndex) throws SQLException {
-        log.info("getInt {} {}", columnIndex, currentRowIndex);
-        return 0;
+//        log.info("getInt {} {}", columnIndex, currentRowIndex);
+        return (int) getValue(columnIndex);
     }
 
     @Override
     public long getLong(int columnIndex) throws SQLException {
-        log.info("getLong {} {}", columnIndex, currentRowIndex);
-        return 0;
+//        log.info("getLong {} {}", columnIndex, currentRowIndex);
+        return (long) getValue(columnIndex);
     }
 
     @Override
     public float getFloat(int columnIndex) throws SQLException {
-        log.info("getFloat {} {}", columnIndex, currentRowIndex);
-        return 0;
+//        log.info("getFloat {} {}", columnIndex, currentRowIndex);
+        return (float) getValue(columnIndex);
     }
 
     @Override
     public double getDouble(int columnIndex) throws SQLException {
-        log.info("getDouble {} {}", columnIndex, currentRowIndex);
-        return 0;
+//        log.info("getDouble {} {}", columnIndex, currentRowIndex);
+        return (double) getValue(columnIndex);
     }
 
     @Override
@@ -280,8 +284,8 @@ public class AsyncCosmosSqlResultSet implements CosmosSqlResultSet {
 
     @Override
     public Timestamp getTimestamp(int columnIndex) throws SQLException {
-        log.info("getTimestamp {} {}", columnIndex, currentRowIndex);
-        return null;
+//        log.info("getTimestamp {} {}", columnIndex, currentRowIndex);
+        return convertToTimestamp(getValue(columnIndex));
     }
 
     @Override
@@ -304,15 +308,14 @@ public class AsyncCosmosSqlResultSet implements CosmosSqlResultSet {
 
     @Override
     public String getString(String columnLabel) throws SQLException {
-        log.info("getString {} {}", columnLabel, currentRowIndex);
-        LinkedHashMap currentRow = localItems.get(currentRowIndex);
-        return currentRow.get(columnLabel).toString();
+//        log.info("getString {} {}", columnLabel, currentRowIndex);
+        return getValue(findColumn(columnLabel)).toString();
     }
 
     @Override
     public boolean getBoolean(String columnLabel) throws SQLException {
-        log.info("getBoolean {} {}", columnLabel, currentRowIndex);
-        return false;
+//        log.info("getBoolean {} {}", columnLabel, currentRowIndex);
+        return getBoolean(findColumn(columnLabel));
     }
 
     @Override
@@ -329,74 +332,62 @@ public class AsyncCosmosSqlResultSet implements CosmosSqlResultSet {
 
     @Override
     public int getInt(String columnLabel) throws SQLException {
-        log.info("getInt {} {}", columnLabel, currentRowIndex);
-        return 0;
+        return getInt(findColumn(columnLabel));
     }
 
     @Override
     public long getLong(String columnLabel) throws SQLException {
-        log.info("getLong {} {}", columnLabel, currentRowIndex);
-        return 0;
+        return getLong(findColumn(columnLabel));
     }
 
     @Override
     public float getFloat(String columnLabel) throws SQLException {
-        log.info("getFloat {} {}", columnLabel, currentRowIndex);
-        return 0;
+        return getFloat(findColumn(columnLabel));
     }
 
     @Override
     public double getDouble(String columnLabel) throws SQLException {
-        log.info("getDouble {} {}", columnLabel, currentRowIndex);
-        return 0;
+        return getDouble(findColumn(columnLabel));
     }
 
     @Override
     public BigDecimal getBigDecimal(String columnLabel, int scale) throws SQLException {
-        log.info("getBigDecimal {} {}", columnLabel, currentRowIndex);
-        return null;
+        return getBigDecimal(findColumn(columnLabel), scale);
     }
 
     @Override
     public byte[] getBytes(String columnLabel) throws SQLException {
-        log.info("getBytes {} {}", columnLabel, currentRowIndex);
-        return new byte[0];
+        return getBytes(findColumn(columnLabel));
     }
 
     @Override
     public Date getDate(String columnLabel) throws SQLException {
-        log.info("getDate {} {}", columnLabel, currentRowIndex);
-        return null;
+        return getDate(findColumn(columnLabel));
     }
 
     @Override
     public Time getTime(String columnLabel) throws SQLException {
-        log.info("getTime {} {}", columnLabel, currentRowIndex);
-        return null;
+        return getTime(findColumn(columnLabel));
     }
 
     @Override
     public Timestamp getTimestamp(String columnLabel) throws SQLException {
-        log.info("getTimestamp {} {}", columnLabel, currentRowIndex);
-        return null;
+        return getTimestamp(findColumn(columnLabel));
     }
 
     @Override
     public InputStream getAsciiStream(String columnLabel) throws SQLException {
-        log.info("getAsciiStream {} {}", columnLabel, currentRowIndex);
-        return null;
+        return getAsciiStream(findColumn(columnLabel));
     }
 
     @Override
     public InputStream getUnicodeStream(String columnLabel) throws SQLException {
-        log.info("getUnicodeStream {} {}", columnLabel, currentRowIndex);
-        return null;
+        return getUnicodeStream(findColumn(columnLabel));
     }
 
     @Override
     public InputStream getBinaryStream(String columnLabel) throws SQLException {
-        log.info("getBinaryStream {} {}", columnLabel, currentRowIndex);
-        return null;
+        return getBinaryStream(findColumn(columnLabel));
     }
 
     @Override
@@ -424,22 +415,17 @@ public class AsyncCosmosSqlResultSet implements CosmosSqlResultSet {
 
     @Override
     public Object getObject(int columnIndex) throws SQLException {
-        log.info("getObject ci {} {}", columnIndex, currentRowIndex);
+//        log.info("getObject ci {} {}", columnIndex, currentRowIndex);
         return getValue(columnIndex);
     }
 
     @Override
     public Object getObject(String columnLabel) throws SQLException {
-        log.info("getObject cl {} {}", columnLabel, currentRowIndex);
-
-        LinkedHashMap currentRow = localItems.get(currentRowIndex);
-        return currentRow.get(columnLabel);
+        return getValue(findColumn(columnLabel));
     }
 
     @Override
     public int findColumn(String columnLabel) throws SQLException {
-        log.info("findColumn {} {}", columnLabel, currentRowIndex);
-
         int columnIndex = columnsIndexMap.entrySet()
                 .stream()
                 .filter(entry -> entry.getValue().name.equals(columnLabel))
@@ -462,8 +448,7 @@ public class AsyncCosmosSqlResultSet implements CosmosSqlResultSet {
 
     @Override
     public Reader getCharacterStream(String columnLabel) throws SQLException {
-        log.info("getCharacterStream {} {}", columnLabel, currentRowIndex);
-        throw new SQLFeatureNotSupportedException();
+        return getCharacterStream(findColumn(columnLabel));
     }
 
     @Override
@@ -474,8 +459,7 @@ public class AsyncCosmosSqlResultSet implements CosmosSqlResultSet {
 
     @Override
     public BigDecimal getBigDecimal(String columnLabel) throws SQLException {
-        log.info("getBigDecimal {} {}", columnLabel, currentRowIndex);
-        return null;
+        return getBigDecimal(findColumn(columnLabel));
     }
 
     @Override
@@ -623,7 +607,7 @@ public class AsyncCosmosSqlResultSet implements CosmosSqlResultSet {
 
     @Override
     public int getType() throws SQLException {
-        log.info("getType");
+//        log.info("getType");
         return ResultSet.TYPE_FORWARD_ONLY;
     }
 
@@ -986,15 +970,14 @@ public class AsyncCosmosSqlResultSet implements CosmosSqlResultSet {
 
     @Override
     public Timestamp getTimestamp(int columnIndex, Calendar cal) throws SQLException {
-        log.info("getTimestamp {} {}", columnIndex, cal);
-
+//        log.info("getTimestamp {} {}", columnIndex, cal);
         Object value = getValue(columnIndex);
         return convertToTimestamp(value);
     }
 
     @Override
     public Timestamp getTimestamp(String columnLabel, Calendar cal) throws SQLException {
-        log.info("getTimestamp {} {}", columnLabel, cal);
+//        log.info("getTimestamp {} {}", columnLabel, cal);
         return getTimestamp(findColumn(columnLabel), cal);
     }
 

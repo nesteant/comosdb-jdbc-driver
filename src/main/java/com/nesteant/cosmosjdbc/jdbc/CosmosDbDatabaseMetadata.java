@@ -977,7 +977,7 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
             cosmosContainerProperties.stream().forEach(container -> {
                 log.info("getColumns container: {}", container.getId());
                 CosmosPagedIterable<LinkedHashMap> objects = cosmosDatabase.getContainer(container.getId()).queryItems("select top 40 * from c", null, LinkedHashMap.class);
-                AsyncCosmosSqlResultSet result = AsyncCosmosSqlResultSet.create(connection, objects);
+                AsyncCosmosSqlResultSet result = AsyncCosmosSqlResultSet.create(connection, objects, 100);
                 result.fetchAll();
                 List<CosmosSqlColumn> columns = result.getColumns();
 

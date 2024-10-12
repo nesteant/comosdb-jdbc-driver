@@ -66,45 +66,45 @@ public class CosmosSqlResultSetMetadata implements ResultSetMetaData {
     @Override
     public String getColumnLabel(int column) throws SQLException {
         String columnLabel = resultSet.getColumnName(column);
-        log.info("Getting getColumnLabel from result set: {}, {}", column, columnLabel);
+//        log.info("Getting getColumnLabel from result set: {}, {}", column, columnLabel);
         return columnLabel;
     }
 
     @Override
     public String getColumnName(int column) throws SQLException {
-        log.info("Getting getColumn from result set: {}", column);
+//        log.info("Getting getColumn from result set: {}", column);
         String columnName = resultSet.getColumnName(column);
-        log.info("Getting getColumnName from result set: {}, {}", column, columnName);
+//        log.info("Getting getColumnName from result set: {}, {}", column, columnName);
         return columnName;
     }
 
     @Override
     public String getSchemaName(int column) throws SQLException {
-        log.info("Getting getSchemaName from result set: {}", column);
+//        log.info("Getting getSchemaName from result set: {}", column);
         return "";
     }
 
     @Override
     public int getPrecision(int column) throws SQLException {
-        log.info("Getting getPrecision from result set: {}", column);
+//        log.info("Getting getPrecision from result set: {}", column);
         return 0;
     }
 
     @Override
     public int getScale(int column) throws SQLException {
-        log.info("Getting getScale from result set: {}", column);
+//        log.info("Getting getScale from result set: {}", column);
         return 0;
     }
 
     @Override
     public String getTableName(int column) throws SQLException {
-        log.info("Getting getTableName from result set: {}", column);
+//        log.info("Getting getTableName from result set: {}", column);
         return "";
     }
 
     @Override
     public String getCatalogName(int column) throws SQLException {
-        log.info("Getting getCatalogName from result set: {}", column);
+//        log.info("Getting getCatalogName from result set: {}", column);
         return "";
     }
 
@@ -127,13 +127,13 @@ public class CosmosSqlResultSetMetadata implements ResultSetMetaData {
 
     @Override
     public int getColumnType(int column) throws SQLException {
-        log.info("Getting getColumnType from result set: {}", column);
+//        log.info("Getting getColumnType from result set: {}", column);
         return resultSet.getColumnType(column);
     }
 
     @Override
     public String getColumnTypeName(int column) throws SQLException {
-        log.info("Getting getColumnTypeName from result set: {}", column);
+//        log.info("Getting getColumnTypeName from result set: {}", column);
         return "";
     }
 
@@ -157,7 +157,7 @@ public class CosmosSqlResultSetMetadata implements ResultSetMetaData {
 
     @Override
     public String getColumnClassName(int column) throws SQLException {
-        log.info("Getting getColumnClassName from result set: {}", column);
+//        log.info("Getting getColumnClassName from result set: {}", column);
         return "";
     }
 
