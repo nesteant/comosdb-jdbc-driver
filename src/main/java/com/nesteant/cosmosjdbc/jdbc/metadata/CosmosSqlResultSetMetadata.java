@@ -1,17 +1,18 @@
-package com.nesteant.cosmosjdbc.jdbc;
+package com.nesteant.cosmosjdbc.jdbc.metadata;
 
 import com.nesteant.cosmosjdbc.jdbc.resultset.CosmosSqlResultSet;
 import lombok.extern.slf4j.Slf4j;
 
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.Objects;
 
 @Slf4j
-public class CosmosDbResultSetMetadata implements ResultSetMetaData {
+public class CosmosSqlResultSetMetadata implements ResultSetMetaData {
 
     private final CosmosSqlResultSet resultSet;
 
-    public CosmosDbResultSetMetadata(CosmosSqlResultSet resultSet) {
+    public CosmosSqlResultSetMetadata(CosmosSqlResultSet resultSet) {
         this.resultSet = resultSet;
     }
 
@@ -64,7 +65,6 @@ public class CosmosDbResultSetMetadata implements ResultSetMetaData {
 
     @Override
     public String getColumnLabel(int column) throws SQLException {
-        log.info("Getting getColumnLabel from result set: {}", column);
         String columnLabel = resultSet.getColumnName(column);
         log.info("Getting getColumnLabel from result set: {}, {}", column, columnLabel);
         return columnLabel;
@@ -72,6 +72,7 @@ public class CosmosDbResultSetMetadata implements ResultSetMetaData {
 
     @Override
     public String getColumnName(int column) throws SQLException {
+        log.info("Getting getColumn from result set: {}", column);
         String columnName = resultSet.getColumnName(column);
         log.info("Getting getColumnName from result set: {}, {}", column, columnName);
         return columnName;
@@ -105,6 +106,23 @@ public class CosmosDbResultSetMetadata implements ResultSetMetaData {
     public String getCatalogName(int column) throws SQLException {
         log.info("Getting getCatalogName from result set: {}", column);
         return "";
+    }
+
+    private boolean isNumeric(String value) {
+        try {
+            Double.parseDouble(value);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    private boolean isBoolean(String value) {
+        return Objects.equals(value, "true") || Objects.equals(value, "false");
+    }
+
+    private boolean isIsoDate(String value) {
+        return value.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z");
     }
 
     @Override

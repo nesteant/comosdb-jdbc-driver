@@ -1,4 +1,6 @@
+import com.nesteant.cosmosjdbc.jdbc.CosmosDbConnection;
 import com.nesteant.cosmosjdbc.jdbc.CosmosDbDriver;
+import com.nesteant.cosmosjdbc.jdbc.CosmosDbStatement;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -21,12 +23,14 @@ public class Statements {
 
     private String catalog;
 
+    private String defaultCatalog = System.getenv("COSMOS_CATALOG");
+
     private String schema;
 
     @Before
     public void setUp() throws SQLException {
         cosmosDbDriver = new CosmosDbDriver();
-        conn =  conn = cosmosDbDriver.connect(URL, info);
+        conn = cosmosDbDriver.connect(URL, info);
         catalog = conn.getCatalog();
         schema = conn.getSchema();
     }
@@ -130,12 +134,28 @@ public class Statements {
     @Test
     public void testAttrs() throws SQLException {
         Statement statement1 = conn.createStatement();
-        boolean execute1 = statement1.execute("select * from pharmacies where pharmacies.test = 'test12'");
+        boolean execute1 = statement1.execute("select * from c where c.test = 'test12'");
         if (execute1) {
             ResultSet resultSet = statement1.getResultSet();
             while (resultSet.next()) {
                 System.out.println("Result: " + resultSet.getString(1));
             }
         }
+    }
+
+    @Test
+    public void testAttrs1() throws SQLException {
+        conn.setCatalog(defaultCatalog);
+        CosmosDbStatement cosmosDbStatement = new CosmosDbStatement((CosmosDbConnection) conn);
+        ResultSet execute = cosmosDbStatement.executeQuery("select * from baskets");
+        String r = "";
+    }
+
+    @Test
+    public void testKeepAlive() throws SQLException {
+        conn.setCatalog(defaultCatalog);
+        CosmosDbStatement cosmosDbStatement = new CosmosDbStatement((CosmosDbConnection) conn);
+        boolean result = cosmosDbStatement.execute("SELECT 'keep alive'");
+        String r = "";
     }
 }

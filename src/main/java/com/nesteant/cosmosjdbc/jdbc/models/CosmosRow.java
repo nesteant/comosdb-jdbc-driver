@@ -50,15 +50,6 @@ public class CosmosRow {
         }
     }
 
-    public CosmosRow(LinkedHashMap<String, Object> map) {
-
-        this.parsed = new ArrayList<>();
-
-        for (String key : map.keySet()) {
-            this.parsed.add(new ImmutablePair<>(key, map.get(key)));
-        }
-    }
-
     @Override
     public String toString() {
         return "CosmosRow{" +

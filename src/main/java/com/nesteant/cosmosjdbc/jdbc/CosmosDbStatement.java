@@ -1,11 +1,14 @@
 package com.nesteant.cosmosjdbc.jdbc;
 
+import com.azure.cosmos.models.CosmosContainerProperties;
 import com.azure.cosmos.models.CosmosQueryRequestOptions;
 import com.azure.cosmos.util.CosmosPagedIterable;
 import com.nesteant.cosmosjdbc.jdbc.models.CosmosRow;
 import com.nesteant.cosmosjdbc.jdbc.models.CosmosSql;
+import com.nesteant.cosmosjdbc.jdbc.resultset.AsyncCosmosSqlResultSet;
+import com.nesteant.cosmosjdbc.jdbc.resultset.SimpleCosmosSqlResultSet;
 import net.sf.jsqlparser.JSQLParserException;
-import net.sf.jsqlparser.expression.Expression;;
+import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.*;
@@ -13,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,7 +27,7 @@ public class CosmosDbStatement implements Statement {
 
     protected int maxRows = 20;
     protected int fetchSize = 20;
-    protected CosmosDbResultSet resultSet;
+    protected ResultSet resultSet;
 
     public CosmosDbStatement(CosmosDbConnection connection) {
         this.connection = connection;
@@ -39,12 +43,9 @@ public class CosmosDbStatement implements Statement {
         CosmosQueryRequestOptions options = new CosmosQueryRequestOptions();
 
         CosmosSql cosmosSql = transformSql(sql);
-        CosmosPagedIterable<Object> objects = connection.currentDatabase.getContainer(cosmosSql.getContainer())
-                .queryItems(cosmosSql.getSql(), options, Object.class);
-
-        List<CosmosRow> rows = objects.stream().map(CosmosRow::new).collect(Collectors.toList());
-        log.info("Query result: {}", rows);
-        resultSet = new CosmosDbResultSet(connection, rows);
+        CosmosPagedIterable<LinkedHashMap> objects = connection.currentDatabase.getContainer(cosmosSql.getContainer())
+                .queryItems(cosmosSql.getSql(), options, LinkedHashMap.class);
+        resultSet = AsyncCosmosSqlResultSet.create(connection, objects);
         return resultSet;
     }
 
@@ -126,12 +127,27 @@ public class CosmosDbStatement implements Statement {
 
         log.info(sql);
         CosmosSql cosmosSql = transformSql(sql);
-        CosmosPagedIterable<Object> objects = connection.currentDatabase.getContainer(cosmosSql.getContainer())
-                .queryItems(cosmosSql.getSql(), options, Object.class);
 
-        List<CosmosRow> rows = objects.stream().map(CosmosRow::new).collect(Collectors.toList());
-        log.info("Query result: {}", rows);
-        resultSet = new CosmosDbResultSet(connection, rows);
+        CosmosPagedIterable<LinkedHashMap> objects;
+        if (cosmosSql.getContainer() != null) {
+            objects = connection.currentDatabase.getContainer(cosmosSql.getContainer())
+                    .queryItems(cosmosSql.getSql(), options, LinkedHashMap.class);
+
+            List<CosmosRow> rows = objects.stream().map(CosmosRow::new).collect(Collectors.toList());
+            log.info("Query result: {}", rows);
+            resultSet = AsyncCosmosSqlResultSet.create(connection, objects);
+            return true;
+        } else {
+            CosmosPagedIterable<CosmosContainerProperties> cosmosContainerProperties = connection
+                    .currentDatabase
+                    .queryContainers(cosmosSql.getSql());
+            //TODO: map query to result set
+            cosmosContainerProperties.stream().forEach(t -> {
+                String x = "";
+            });
+            String x = "";
+        }
+        resultSet = new SimpleCosmosSqlResultSet(connection);
         return true;
     }
 
@@ -313,7 +329,6 @@ public class CosmosDbStatement implements Statement {
         try {
             parsed = CCJSqlParserUtil.parse(sql, ccjSqlParser -> {
                 ccjSqlParser.withUnsupportedStatements(true);
-//                ccjSqlParser.
             });
         } catch (JSQLParserException e) {
             throw new SQLException(e);
@@ -323,6 +338,13 @@ public class CosmosDbStatement implements Statement {
             Select select = (PlainSelect) parsed;
 
             PlainSelect plainSelect = select.getPlainSelect();
+
+            boolean isTechnicalQuery = plainSelect.getFromItem() == null;
+
+            if (isTechnicalQuery) {
+                return new CosmosSql(sql, null, connection.currentDatabase.getId());
+            }
+
             Table table = (Table) plainSelect.getFromItem();
             String tableName = table.getName().replaceAll("\"", "");
             String dbLinkName = table.getDBLinkName();

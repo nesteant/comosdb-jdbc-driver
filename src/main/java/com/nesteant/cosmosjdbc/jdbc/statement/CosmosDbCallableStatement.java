@@ -1,4 +1,6 @@
-package com.nesteant.cosmosjdbc.jdbc;
+package com.nesteant.cosmosjdbc.jdbc.statement;
+
+import com.nesteant.cosmosjdbc.jdbc.CosmosDbConnection;
 
 import java.io.InputStream;
 import java.io.Reader;

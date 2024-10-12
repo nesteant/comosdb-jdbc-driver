@@ -3,6 +3,8 @@ package com.nesteant.cosmosjdbc.jdbc;
 import com.azure.cosmos.CosmosClient;
 import com.azure.cosmos.CosmosClientBuilder;
 import com.azure.cosmos.CosmosDatabase;
+import com.nesteant.cosmosjdbc.jdbc.statement.CosmosDbCallableStatement;
+import com.nesteant.cosmosjdbc.jdbc.statement.CosmosDbPreparedStatement;
 import lombok.extern.slf4j.Slf4j;
 
 import java.sql.*;
@@ -102,6 +104,7 @@ public class CosmosDbConnection implements Connection {
         log.info("Closing connection");
         client.close();
         client = null;
+        log.info("Connection closed");
     }
 
     @Override
@@ -154,13 +157,13 @@ public class CosmosDbConnection implements Connection {
 
     @Override
     public SQLWarning getWarnings() throws SQLException {
-//        log.info("Getting warnings");
+        log.info("Getting warnings");
         return null;
     }
 
     @Override
     public void clearWarnings() throws SQLException {
-//        log.info("Clearing warnings");
+        log.info("Clearing warnings");
     }
 
     @Override

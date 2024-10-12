@@ -6,11 +6,16 @@ import com.azure.cosmos.models.CosmosContainerProperties;
 import com.azure.cosmos.models.CosmosContainerResponse;
 import com.azure.cosmos.util.CosmosPagedIterable;
 import com.google.gson.Gson;
-import com.nesteant.cosmosjdbc.jdbc.models.CosmosRow;
+import com.nesteant.cosmosjdbc.jdbc.models.CosmosSqlColumn;
+import com.nesteant.cosmosjdbc.jdbc.resultset.AsyncCosmosSqlResultSet;
+import com.nesteant.cosmosjdbc.jdbc.resultset.SimpleCosmosSqlResultSet;
 import lombok.extern.slf4j.Slf4j;
 
 import java.sql.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -711,7 +716,7 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
     @Override
     public ResultSet getProcedures(String catalog, String schemaPattern, String procedureNamePattern) throws SQLException {
         log.info("getProcedures catalog: {}, schemaPattern: {}, procedureNamePattern: {}", catalog, schemaPattern, procedureNamePattern);
-        return CosmosDbResultSet.EMPTY(connection);
+        return new SimpleCosmosSqlResultSet(connection);
 //        String var4;
 //        if (this.b.aa() >= 5) {
 //            var4 = "DatabaseMetaData.getProcedures(";
@@ -773,7 +778,7 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
     @Override
     public ResultSet getProcedureColumns(String catalog, String schemaPattern, String procedureNamePattern, String columnNamePattern) throws SQLException {
         log.info("getProcedureColumns catalog: {}, schemaPattern: {}, procedureNamePattern: {}, columnNamePattern: {}", catalog, schemaPattern, procedureNamePattern, columnNamePattern);
-        return CosmosDbResultSet.EMPTY(connection);
+        return new SimpleCosmosSqlResultSet(connection);
 
 //        if (this.b.aa() >= 5) {
 //            String var5 = "DatabaseMetaData.getProcedureColumns(";
@@ -885,12 +890,12 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
         CosmosClient client = connection.client;
         if (catalog == null) {
             log.info("getTables catalog is null");
-            return CosmosDbResultSet.EMPTY(connection);
+            return new SimpleCosmosSqlResultSet(connection);
         }
         CosmosDatabase database = client.getDatabase(catalog);
 
         CosmosPagedIterable<CosmosContainerProperties> cosmosContainerProperties = database.readAllContainers();
-        List<CosmosRow> rowList = cosmosContainerProperties.stream().map(container -> new CosmosRow(new LinkedHashMap<String, Object>() {
+        List<LinkedHashMap> rowList = cosmosContainerProperties.stream().map(container -> new LinkedHashMap<String, Object>() {
             {
                 {
                     put("TABLE_CAT", catalog);
@@ -905,26 +910,30 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
                     put("REF_GENERATION", null);
                 }
             }
-        })).collect(Collectors.toList());
+        }).collect(Collectors.toList());
         log.info("getTables rowList: {}", new Gson().toJson(rowList));
 
-        return new CosmosDbResultSet(connection, rowList);
+        return new SimpleCosmosSqlResultSet(connection, rowList);
     }
 
     @Override
     public ResultSet getSchemas() throws SQLException {
         log.info("getSchemas metadata");
-        if (connection.currentDatabase == null) {
+        log.info("getSchemas currentDatabase: {}", connection.currentDatabase);
+        if (connection.currentDatabase == null || connection.currentDatabase.getId() == null) {
             log.info("getSchemas currentDatabase is null");
-            return CosmosDbResultSet.EMPTY(connection);
+            return new SimpleCosmosSqlResultSet(connection);
         } else {
-            log.info("getSchemas currentDatabase: {}", connection.currentDatabase.getId());
-            return new CosmosDbResultSet(connection, new ArrayList<CosmosRow>() {{
-                add(new CosmosRow(new LinkedHashMap<String, Object>() {{
+            String id = connection.currentDatabase.getId();
+            log.info("getSchemas currentDatabase: {}", id);
+            ArrayList<LinkedHashMap> objects = new ArrayList<LinkedHashMap>() {{
+                add(new LinkedHashMap<String, Object>() {{
                     put("TABLE_SCHEM", "containers");
-                    put("TABLE_CATALOG", connection.currentDatabase.getId());
-                }}));
-            }});
+                    put("TABLE_CATALOG", id);
+                }});
+            }};
+            log.info("getSchemas objects: {}", objects);
+            return new SimpleCosmosSqlResultSet(connection, objects);
         }
     }
 
@@ -933,25 +942,25 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
         log.info("getCatalogs");
         Collection<CosmosDatabase> catalogs = connection.databases.values();
 
-        List<CosmosRow> rowList = catalogs.stream().map(database -> new CosmosRow(new LinkedHashMap<String, Object>() {
+        List<LinkedHashMap> rowList = catalogs.stream().map(database -> new LinkedHashMap<String, Object>() {
             {
                 put("TABLE_CAT", database.getId());
             }
-        })).collect(Collectors.toList());
+        }).collect(Collectors.toList());
         log.info("getCatalogs rowList: {}", rowList);
-        return new CosmosDbResultSet(connection, rowList);
+        return new SimpleCosmosSqlResultSet(connection, rowList);
     }
 
     @Override
     public ResultSet getTableTypes() throws SQLException {
         log.info("getTableTypes");
-        List<CosmosRow> results = new ArrayList<CosmosRow>() {{
-            add(new CosmosRow(new LinkedHashMap<String, Object>() {{
+        ArrayList<LinkedHashMap> results = new ArrayList<LinkedHashMap>() {{
+            add(new LinkedHashMap<String, Object>() {{
                 put("TABLE_TYPE", "TABLE");
-            }}));
+            }});
         }};
-        log.info("getTableTypes results: {}", new Gson().toJson(results));
-        return new CosmosDbResultSet(connection, results);
+        log.info("getTableTypes results: {}", results);
+        return new SimpleCosmosSqlResultSet(connection, results);
     }
 
     @Override
@@ -960,65 +969,60 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
 
         try {
             CosmosDatabase cosmosDatabase = connection.databases.get(catalog);
-
+            log.info("getColumns cosmosDatabase: {}", cosmosDatabase.getId());
             CosmosPagedIterable<CosmosContainerProperties> cosmosContainerProperties = cosmosDatabase.readAllContainers();
-            List<CosmosRow> rowList = new ArrayList<>();
+            List<LinkedHashMap> rowList = new ArrayList<>();
 
-            cosmosContainerProperties.forEach(container -> {
+            log.info("getColumns cosmosContainerProperties: {}", cosmosContainerProperties.stream().count());
+            cosmosContainerProperties.stream().forEach(container -> {
                 log.info("getColumns container: {}", container.getId());
-                CosmosPagedIterable<Object> objects = cosmosDatabase.getContainer(container.getId()).queryItems("select top 40 * from " + container.getId(), null, Object.class);
-                List<CosmosRow> rows = objects.stream().map(CosmosRow::new).collect(Collectors.toList());
-                List<String> columns = new ArrayList<>();
-                rows.forEach(row -> row.getParsed().forEach(pair -> {
-                    if (!columns.contains(pair.getLeft())) {
-                        columns.add(pair.getLeft());
-                    }
-                }));
-                rows.forEach(row -> row.setColumns(columns));
+                CosmosPagedIterable<LinkedHashMap> objects = cosmosDatabase.getContainer(container.getId()).queryItems("select top 40 * from c", null, LinkedHashMap.class);
+                AsyncCosmosSqlResultSet result = AsyncCosmosSqlResultSet.create(connection, objects);
+                result.fetchAll();
+                List<CosmosSqlColumn> columns = result.getColumns();
 
-                if (!rows.isEmpty()) {
-                    CosmosRow cosmosRow = rows.get(0);
-                    cosmosRow.getColumns().forEach(columnName -> {
-                        rowList.add(new CosmosRow(new LinkedHashMap<String, Object>() {{
-                            put("TABLE_CAT", catalog);
-                            put("TABLE_SCHEM", null);
-                            put("TABLE_NAME", container.getId());
-                            put("COLUMN_NAME", columnName);
-                            put("DATA_TYPE", Types.VARCHAR);
-                            put("TYPE_NAME", "VARCHAR");
-                            put("COLUMN_SIZE", 255);
-                            put("BUFFER_LENGTH", 255);
-                            put("DECIMAL_DIGITS", 0);
-                            put("NUM_PREC_RADIX", 10);
-                            put("NULLABLE", 0);
-                            put("REMARKS", null);
-                            put("COLUMN_DEF", null);
-                            put("SQL_DATA_TYPE", 0);
-                            put("SQL_DATETIME_SUB", 0);
-                            put("CHAR_OCTET_LENGTH", 0);
-                            put("ORDINAL_POSITION", 1);
-                            put("IS_NULLABLE", "YES");
-                            put("SCOPE_CATALOG", null);
-                            put("SCOPE_SCHEMA", null);
-                            put("SCOPE_TABLE", null);
-                            put("SOURCE_DATA_TYPE", null);
-                            put("IS_AUTOINCREMENT", "NO");
-                            put("IS_GENERATEDCOLUMN", "NO");
-                        }}));
-                    });
-                }
+                columns.forEach(column -> {
+                    rowList.add(new LinkedHashMap<String, Object>() {{
+                        put("TABLE_CAT", catalog);
+                        put("TABLE_SCHEM", null);
+                        put("TABLE_NAME", container.getId());
+                        put("COLUMN_NAME", column.name);
+                        put("DATA_TYPE", column.getType());
+                        put("TYPE_NAME", JDBCType.valueOf(column.getType()).getName());
+//                        put("COLUMN_SIZE", 255);
+                        put("COLUMN_SIZE", null);
+//                        put("BUFFER_LENGTH", 255);
+                        put("DECIMAL_DIGITS", 0);
+                        put("NUM_PREC_RADIX", 10);
+                        put("NULLABLE", 1);
+                        put("REMARKS", null);
+                        put("COLUMN_DEF", null);
+                        put("SQL_DATA_TYPE", 0);
+                        put("SQL_DATETIME_SUB", 0);
+                        put("CHAR_OCTET_LENGTH", 0);
+                        put("ORDINAL_POSITION", 1);
+                        put("IS_NULLABLE", "YES");
+                        put("SCOPE_CATALOG", null);
+                        put("SCOPE_SCHEMA", null);
+                        put("SCOPE_TABLE", null);
+                        put("SOURCE_DATA_TYPE", null);
+                        put("IS_AUTOINCREMENT", "NO");
+                        put("IS_GENERATEDCOLUMN", "NO");
+                    }});
+                });
             });
-            return new CosmosDbResultSet(connection, rowList);
+            log.info("found columns: {}", rowList.size());
+            return new SimpleCosmosSqlResultSet(connection, rowList);
         } catch (Exception e) {
             log.error("getColumns error", e);
-            return CosmosDbResultSet.EMPTY(connection);
+            return new SimpleCosmosSqlResultSet(connection);
         }
     }
 
     @Override
     public ResultSet getColumnPrivileges(String catalog, String schema, String table, String columnNamePattern) throws SQLException {
         log.info("getColumnPrivileges catalog: {}, schema: {}, table: {}, columnNamePattern: {}", catalog, schema, table, columnNamePattern);
-        return CosmosDbResultSet.EMPTY(connection);
+        return new SimpleCosmosSqlResultSet(connection);
 //        if (this.b.aa() >= 5) {
 //            String var5 = "DatabaseMetaData.getColumnPrivileges(";
 //            var5 = var5 + "catalog:" + (var1 == null ? "<null>" : "'" + var1 + "'");
@@ -1047,7 +1051,7 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
     @Override
     public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern) throws SQLException {
         log.info("getTablePrivileges catalog: {}, schemaPattern: {}, tableNamePattern: {}", catalog, schemaPattern, tableNamePattern);
-        return CosmosDbResultSet.EMPTY(connection);
+        return new SimpleCosmosSqlResultSet(connection);
     }
 
     @Override
@@ -1055,8 +1059,8 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
         log.info("getBestRowIdentifier catalog: {}, schema: {}, table: {}, scope: {}, nullable: {}", catalog, schema, table, scope, nullable);
         CosmosContainerResponse read = connection.databases.get(catalog).getContainer(table).read();
 
-        List<CosmosRow> rowList = new ArrayList<CosmosRow>() {{
-            add(new CosmosRow(new LinkedHashMap<String, Object>() {{
+        List<LinkedHashMap> rowList = new ArrayList<LinkedHashMap>() {{
+            add(new LinkedHashMap<String, Object>() {{
                 put("SCOPE", scope);
                 put("COLUMN_NAME", "id");
                 put("DATA_TYPE", Types.VARCHAR);
@@ -1065,40 +1069,40 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
                 put("BUFFER_LENGTH", 255);
                 put("DECIMAL_DIGITS", 0);
                 put("PSEUDO_COLUMN", 1);
-            }}));
+            }});
         }};
 
-        return new CosmosDbResultSet(connection, rowList);
+        return new SimpleCosmosSqlResultSet(connection, rowList);
     }
 
     @Override
     public ResultSet getVersionColumns(String catalog, String schema, String table) throws SQLException {
         log.info("getVersionColumns catalog: {}, schema: {}, table: {}", catalog, schema, table);
-        return CosmosDbResultSet.EMPTY(connection);
+        return new SimpleCosmosSqlResultSet(connection);
     }
 
     @Override
     public ResultSet getPrimaryKeys(String catalog, String schema, String table) throws SQLException {
         log.info("getPrimaryKeys catalog: {}, schema: {}, table: {}", catalog, schema, table);
         CosmosContainerResponse read = connection.databases.get(catalog).getContainer(table).read();
-        List<CosmosRow> rowList = new ArrayList<CosmosRow>() {{
-            add(new CosmosRow(new LinkedHashMap<String, Object>() {{
+        List<LinkedHashMap> rowList = new ArrayList<LinkedHashMap>() {{
+            add(new LinkedHashMap<String, Object>() {{
                 put("TABLE_CAT", catalog);
                 put("TABLE_SCHEM", null);
                 put("TABLE_NAME", table);
                 put("COLUMN_NAME", "id");
                 put("KEY_SEQ", 1);
                 put("PK_NAME", "id");
-            }}));
+            }});
         }};
 
-        return new CosmosDbResultSet(connection, rowList);
+        return new SimpleCosmosSqlResultSet(connection, rowList);
     }
 
     @Override
     public ResultSet getImportedKeys(String catalog, String schema, String table) throws SQLException {
         log.info("getImportedKeys catalog: {}, schema: {}, table: {}", catalog, schema, table);
-        return CosmosDbResultSet.EMPTY(connection);
+        return new SimpleCosmosSqlResultSet(connection);
 //        if (this.b.aa() >= 5) {
 //            String var4 = "DatabaseMetaData.getImportedKeys(";
 //            var4 = var4 + "catalog:" + (var1 == null ? "<null>" : "'" + var1 + "'");
@@ -1122,7 +1126,7 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
     @Override
     public ResultSet getExportedKeys(String catalog, String schema, String table) throws SQLException {
         log.info("getExportedKeys catalog: {}, schema: {}, table: {}", catalog, schema, table);
-        return CosmosDbResultSet.EMPTY(connection);
+        return new SimpleCosmosSqlResultSet(connection);
 //        if (this.b.aa() >= 5) {
 //            String var4 = "DatabaseMetaData.getExportedKeys(";
 //            var4 = var4 + "catalog:" + (var1 == null ? "<null>" : "'" + var1 + "'");
@@ -1146,7 +1150,7 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
     @Override
     public ResultSet getCrossReference(String parentCatalog, String parentSchema, String parentTable, String foreignCatalog, String foreignSchema, String foreignTable) throws SQLException {
         log.info("getCrossReference parentCatalog: {}, parentSchema: {}, parentTable: {}, foreignCatalog: {}, foreignSchema: {}, foreignTable: {}", parentCatalog, parentSchema, parentTable, foreignCatalog, foreignSchema, foreignTable);
-        return CosmosDbResultSet.EMPTY(connection);
+        return new SimpleCosmosSqlResultSet(connection);
 //        if (this.b.aa() >= 5) {
 //            String var7 = "DatabaseMetaData.getCrossReference(";
 //            var7 = var7 + "primaryCatalog:" + (var1 == null ? "<null>" : "'" + var1 + "'");
@@ -1177,13 +1181,13 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
     @Override
     public ResultSet getTypeInfo() throws SQLException {
         log.info("getTypeInfo");
-        return CosmosDbResultSet.EMPTY(connection);
+        return new SimpleCosmosSqlResultSet(connection);
     }
 
     @Override
     public ResultSet getIndexInfo(String catalog, String schema, String table, boolean unique, boolean approximate) throws SQLException {
         log.info("getIndexInfo catalog: {}, schema: {}, table: {}, unique: {}, approximate: {}", catalog, schema, table, unique, approximate);
-        return CosmosDbResultSet.EMPTY(connection);
+        return new SimpleCosmosSqlResultSet(connection);
 //        String var6;
 //        if (this.b.aa() >= 5) {
 //            var6 = "DatabaseMetaData.getIndexInfo(";
@@ -1257,7 +1261,7 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
     @Override
     public ResultSet getUDTs(String catalog, String schemaPattern, String typeNamePattern, int[] types) throws SQLException {
         log.info("getUDTs catalog: {}, schemaPattern: {}, typeNamePattern: {}, types: {}", catalog, schemaPattern, typeNamePattern, types);
-        return CosmosDbResultSet.EMPTY(connection);
+        return new SimpleCosmosSqlResultSet(connection);
     }
 
     @Override
@@ -1349,19 +1353,19 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
     @Override
     public ResultSet getSuperTypes(String catalog, String schemaPattern, String typeNamePattern) throws SQLException {
         log.info("getSuperTypes catalog: {}, schemaPattern: {}, typeNamePattern: {}", catalog, schemaPattern, typeNamePattern);
-        return CosmosDbResultSet.EMPTY(connection);
+        return new SimpleCosmosSqlResultSet(connection);
     }
 
     @Override
     public ResultSet getSuperTables(String catalog, String schemaPattern, String tableNamePattern) throws SQLException {
         log.info("getSuperTables catalog: {}, schemaPattern: {}, tableNamePattern: {}", catalog, schemaPattern, tableNamePattern);
-        return CosmosDbResultSet.EMPTY(connection);
+        return new SimpleCosmosSqlResultSet(connection);
     }
 
     @Override
     public ResultSet getAttributes(String catalog, String schemaPattern, String typeNamePattern, String attributeNamePattern) throws SQLException {
         log.info("getAttributes catalog: {}, schemaPattern: {}, typeNamePattern: {}, attributeNamePattern: {}", catalog, schemaPattern, typeNamePattern, attributeNamePattern);
-        return CosmosDbResultSet.EMPTY(connection);
+        return new SimpleCosmosSqlResultSet(connection);
 //        if (this.b.aa() >= 5) {
 //            String var5 = "DatabaseMetaData.getAttributes(";
 //            var5 = var5 + "catalog:" + (var1 == null ? "<null>" : "'" + var1 + "'");
@@ -1391,11 +1395,11 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
     @Override
     public ResultSet getSchemas(String catalog, String schemaPattern) throws SQLException {
         log.info("getSchemas catalog: {}, schemaPattern: {}", catalog, schemaPattern);
-        return new CosmosDbResultSet(connection, new ArrayList<CosmosRow>() {{
-            add(new CosmosRow(new LinkedHashMap<String, Object>() {{
+        return new SimpleCosmosSqlResultSet(connection, new ArrayList<LinkedHashMap>() {{
+            add(new LinkedHashMap<String, Object>() {{
                 put("TABLE_SCHEM", "containers");
                 put("TABLE_CATALOG", catalog);
-            }}));
+            }});
         }});
     }
 
@@ -1415,25 +1419,25 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
 //        } catch (Exception var4) {
 //            throw mgc.a(var4);
 //        }
-        return CosmosDbResultSet.EMPTY(connection);
+        return new SimpleCosmosSqlResultSet(connection);
     }
 
     @Override
     public ResultSet getFunctions(String catalog, String schemaPattern, String functionNamePattern) throws SQLException {
         log.warn("getPseudoColumns not supported");
-        return CosmosDbResultSet.EMPTY(connection);
+        return new SimpleCosmosSqlResultSet(connection);
     }
 
     @Override
     public ResultSet getFunctionColumns(String catalog, String schemaPattern, String functionNamePattern, String columnNamePattern) throws SQLException {
         log.warn("getPseudoColumns not supported");
-        return CosmosDbResultSet.EMPTY(connection);
+        return new SimpleCosmosSqlResultSet(connection);
     }
 
     @Override
     public ResultSet getPseudoColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern) throws SQLException {
         log.warn("getPseudoColumns not supported");
-        return CosmosDbResultSet.EMPTY(connection);
+        return new SimpleCosmosSqlResultSet(connection);
     }
 
     @Override
