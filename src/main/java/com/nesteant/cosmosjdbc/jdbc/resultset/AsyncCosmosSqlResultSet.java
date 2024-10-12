@@ -1,7 +1,10 @@
-package com.nesteant.cosmosjdbc.jdbc;
+package com.nesteant.cosmosjdbc.jdbc.resultset;
 
-import com.nesteant.cosmosjdbc.jdbc.models.CosmosRow;
-import org.apache.commons.lang3.tuple.Pair;
+import com.azure.cosmos.models.FeedResponse;
+import com.azure.cosmos.util.CosmosPagedIterable;
+import com.nesteant.cosmosjdbc.jdbc.CosmosDbConnection;
+import com.nesteant.cosmosjdbc.jdbc.metadata.CosmosSqlResultSetMetadata;
+import com.nesteant.cosmosjdbc.jdbc.models.CosmosSqlColumn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,59 +12,190 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
-import java.sql.*;
 import java.sql.Date;
+import java.sql.*;
+import java.time.OffsetDateTime;
 import java.util.*;
 
-public class CosmosDbResultSet implements ResultSet {
+public class AsyncCosmosSqlResultSet implements CosmosSqlResultSet {
 
-    private static final Logger log = LoggerFactory.getLogger(CosmosDbResultSet.class);
+    protected static final Logger log = LoggerFactory.getLogger(AsyncCosmosSqlResultSet.class);
     protected CosmosDbConnection connection;
-    protected List<CosmosRow> rows = null;
-    protected List<String> columns = null;
-    protected int currentRowIndex = -1;
+    private List<LinkedHashMap> localItems = new ArrayList<>();
+    private int fetchSize = 20;
+    private int currentRowIndex = -1;
+    private String continuationToken;
+    private LinkedHashMap<String, CosmosSqlColumn> columnsMap = new LinkedHashMap<>();
+    private LinkedHashMap<Integer, CosmosSqlColumn> columnsIndexMap = new LinkedHashMap<>();
+    Iterator<FeedResponse<LinkedHashMap>> iterator;
 
-    protected int fetchSize = 10;
-
-    public CosmosDbResultSet(CosmosDbConnection connection, List<CosmosRow> rows) {
-        this.rows = rows;
-        this.connection = connection;
-        this.columns = new ArrayList<>();
-        rows.forEach(row -> row.getParsed().forEach(pair -> {
-            if (!columns.contains(pair.getLeft())) {
-                columns.add(pair.getLeft());
-            }
-        }));
-        rows.forEach(row -> row.setColumns(columns));
+    public List<LinkedHashMap> fetchAll() {
+        List<LinkedHashMap> allItems = new ArrayList<>();
+        while (iterator.hasNext()) {
+            allItems.addAll(fetchNext());
+        }
+        return allItems;
     }
 
-    static CosmosDbResultSet EMPTY(CosmosDbConnection connection) {
-        return new CosmosDbResultSet(connection, new ArrayList<>());
+    public List<CosmosSqlColumn> getColumns() {
+        return new ArrayList<>(columnsMap.values());
+    }
+
+    public int getColumnCount() {
+        return columnsMap.size();
+    }
+
+    public String getColumnName(int column) {
+        return columnsIndexMap.get(column).getName();
+    }
+
+    public int getColumnType(int column) {
+        return columnsIndexMap.get(column).getType();
+    }
+
+    private int getType(Object obj) {
+        log.info("getType {}", obj != null ? obj.getClass() : null);
+        if (obj instanceof Integer) {
+            log.info("getType {}", Types.INTEGER);
+            return Types.INTEGER;
+        }
+
+        if (obj == null) {
+            log.info("getType {}", Types.NULL);
+            return Types.NULL;
+        }
+
+        if (obj instanceof Long) {
+            log.info("getType {}", Types.BIGINT);
+            return Types.BIGINT;
+        }
+
+        if (obj instanceof Double) {
+            log.info("getType {}", Types.DOUBLE);
+            return Types.DOUBLE;
+        }
+
+        if (obj instanceof Float) {
+            log.info("getType {}", Types.FLOAT);
+            return Types.FLOAT;
+        }
+
+        if (obj instanceof BigDecimal) {
+            log.info("getType {}", Types.DECIMAL);
+            return Types.DECIMAL;
+        }
+
+        if (obj instanceof Date) {
+            log.info("getType {}", Types.DATE);
+            return Types.DATE;
+        }
+
+        if (obj instanceof Time) {
+            log.info("getType {}", Types.TIME);
+            return Types.TIME;
+        }
+
+        if (obj instanceof Timestamp) {
+            log.info("getType {}", Types.TIMESTAMP);
+            return Types.TIMESTAMP;
+        }
+
+        if (obj instanceof Boolean) {
+            log.info("getType {}", Types.BOOLEAN);
+            return Types.BOOLEAN;
+        }
+
+        if (obj instanceof byte[]) {
+            log.info("getType {}", Types.BINARY);
+            return Types.BINARY;
+        }
+
+        if (obj instanceof URL) {
+            log.info("getType {}", Types.DATALINK);
+            return Types.DATALINK;
+        }
+
+        if (obj.toString().contains("T")) {
+            try {
+                OffsetDateTime.parse(obj.toString());
+                return Types.TIMESTAMP;
+            } catch (Exception ignored) {
+            }
+        }
+
+        return Types.VARCHAR;
+    }
+
+    private List<LinkedHashMap> fetchNext() {
+        List<LinkedHashMap> page;
+        if (iterator.hasNext()) {
+            FeedResponse<LinkedHashMap> pageFeed = iterator.next();
+            page = pageFeed.getResults();
+            page.stream().forEach(obj -> {
+                Set<Map.Entry<String, Object>> set = obj.entrySet();
+                set.forEach(entry -> {
+                    boolean alreadySaved = columnsMap.containsKey(entry.getKey());
+                    if (!alreadySaved) {
+                        CosmosSqlColumn column = new CosmosSqlColumn(entry.getKey(), getType(entry.getValue()));
+                        columnsMap.put(entry.getKey(), column);
+                        columnsIndexMap.put(columnsIndexMap.size() + 1, column);
+                    }
+                });
+            });
+            // Get the continuation token to fetch the next page
+            continuationToken = pageFeed.getContinuationToken();
+        } else {
+            return new ArrayList<>();
+        }
+        return page;
+    }
+
+    private AsyncCosmosSqlResultSet(CosmosDbConnection connection) {
+        this.connection = connection;
     }
 
     private boolean hasNext() {
-        boolean hasNext = currentRowIndex + 1 < rows.size();
-        log.info("hasNext {}", hasNext);
-        return hasNext;
+        return localItems.size() - 1 > currentRowIndex;
+    }
+
+    private Object getValue(int columnIndex) {
+        log.info("SearchValue {} {}", columnIndex, currentRowIndex);
+        LinkedHashMap currentRow = localItems.get(currentRowIndex);
+        CosmosSqlColumn cosmosSqlColumn = columnsIndexMap.get(columnIndex);
+        String columnName = cosmosSqlColumn.getName();
+        return currentRow.get(columnName);
+    }
+
+    public static AsyncCosmosSqlResultSet create(CosmosDbConnection connection, CosmosPagedIterable<LinkedHashMap> iterable) {
+        AsyncCosmosSqlResultSet set = new AsyncCosmosSqlResultSet(connection);
+        Iterable<FeedResponse<LinkedHashMap>> feedResponses = iterable.iterableByPage(set.fetchSize);
+        set.iterator = feedResponses.iterator();
+        set.localItems = set.fetchNext();
+        return set;
     }
 
     @Override
     public boolean next() throws SQLException {
-        log.info("next");
-        if (hasNext()) {
-            currentRowIndex++;
-            log.info("found next row: {}", rows.get(currentRowIndex).toString());
-            return true;
-        } else {
-            return false;
+        if (localItems.size() - 1 == currentRowIndex) {
+            currentRowIndex = 0;
+            List<LinkedHashMap> page = fetchNext();
+            localItems.addAll(page);
         }
+
+        if (localItems.size() - 1 > currentRowIndex) {
+            currentRowIndex++;
+            log.info("found next row: {}", localItems.get(currentRowIndex).toString());
+        }
+        return hasNext();
     }
 
     @Override
     public void close() throws SQLException {
         log.info("close");
-        rows = new ArrayList<>();
+        localItems = new ArrayList<>();
         currentRowIndex = -1;
+        iterator = null;
+        continuationToken = null;
         connection = null;
     }
 
@@ -74,27 +208,8 @@ public class CosmosDbResultSet implements ResultSet {
     @Override
     public String getString(int columnIndex) throws SQLException {
         log.info("getString {} {}", columnIndex, currentRowIndex);
-        CosmosRow cosmosRowRef = rows.get(0);
-        CosmosRow cosmosRow = rows.get(currentRowIndex);
-        List<Pair<String, Object>> parsedRef = cosmosRowRef.getParsed();
-        List<Pair<String, Object>> parsed = cosmosRow.getParsed();
-        if (columnIndex > parsedRef.size()) {
-           return null;
-        }
-        Pair<String, Object> pairRef = parsedRef.get(columnIndex - 1);
-        Pair<String, Object> pair = parsed.stream().filter(p -> p.getLeft().equals(pairRef.getLeft()))
-                .findFirst()
-                .orElse(null);
-        if (pair == null) {
-            return null;
-        }
-
-        Object right = pair.getRight();
-        if (right == null) {
-            log.warn("getString NULL {} {} {}", columnIndex, currentRowIndex, pair);
-            return null;
-        }
-        return right.toString();
+        Object value = getValue(columnIndex);
+        return value == null ? null : value.toString();
     }
 
     @Override
@@ -190,14 +305,8 @@ public class CosmosDbResultSet implements ResultSet {
     @Override
     public String getString(String columnLabel) throws SQLException {
         log.info("getString {} {}", columnLabel, currentRowIndex);
-
-        CosmosRow cosmosRow = rows.get(currentRowIndex);
-        Pair<String, Object> pair = cosmosRow.getParsed().stream().filter(p -> p.getLeft().equals(columnLabel)).findFirst().orElse(null);
-
-        if (pair == null) {
-            throw new SQLException("Column not found: " + columnLabel);
-        }
-        return pair.getRight().toString();
+        LinkedHashMap currentRow = localItems.get(currentRowIndex);
+        return currentRow.get(columnLabel).toString();
     }
 
     @Override
@@ -310,97 +419,39 @@ public class CosmosDbResultSet implements ResultSet {
     @Override
     public ResultSetMetaData getMetaData() throws SQLException {
         log.info("getResultSetMetaData");
-        return new CosmosDbResultSetMetadata(this);
+        return new CosmosSqlResultSetMetadata(this);
     }
 
     @Override
     public Object getObject(int columnIndex) throws SQLException {
         log.info("getObject ci {} {}", columnIndex, currentRowIndex);
-
-        CosmosRow cosmosRow = rows.get(currentRowIndex);
-        Pair<String, Object> pair = cosmosRow.getIndex().get(columnIndex - 1);
-
-        Object extracted = pair == null ? null : pair.getRight();
-
-        log.info("Row parsed: {}, {}", cosmosRow, columnIndex);
-
-        if (extracted instanceof String) {
-            return extracted;
-        }
-
-        if (extracted instanceof Integer) {
-            return extracted;
-        }
-
-        if (extracted instanceof Long) {
-            return extracted;
-        }
-
-        if (extracted instanceof Double) {
-            return extracted;
-        }
-
-        if (extracted instanceof Float) {
-            return extracted;
-        }
-
-        if (extracted instanceof Boolean) {
-            return extracted;
-        }
-
-        if (extracted instanceof Date) {
-            return extracted;
-        }
-
-        if (extracted instanceof Time) {
-            return extracted;
-        }
-
-        if (extracted instanceof Timestamp) {
-            return extracted;
-        }
-
-        if (extracted instanceof Map.Entry) {
-            Object key = ((Map.Entry<?, ?>) extracted).getKey();
-            Object value = ((Map.Entry<?, ?>) extracted).getValue();
-            return String.format("%s: %s", key, value);
-        }
-
-        if (extracted == null) {
-            return null;
-        }
-        log.info("getObject NOT PARSED {} {} {}", columnIndex, extracted, extracted.getClass().getName());
-        return null;
+        return getValue(columnIndex);
     }
 
     @Override
     public Object getObject(String columnLabel) throws SQLException {
         log.info("getObject cl {} {}", columnLabel, currentRowIndex);
 
-        CosmosRow cosmosRow = rows.get(currentRowIndex);
-        Pair<String, Object> pair = cosmosRow.getParsed().stream().filter(p -> p.getLeft().equals(columnLabel)).findFirst().orElse(null);
-
-        if (pair == null) {
-            throw new SQLException("Column not found: " + columnLabel);
-        }
-
-        log.info("getObject {} {}", columnLabel, pair.getRight());
-        return pair.getRight();
+        LinkedHashMap currentRow = localItems.get(currentRowIndex);
+        return currentRow.get(columnLabel);
     }
 
     @Override
     public int findColumn(String columnLabel) throws SQLException {
         log.info("findColumn {} {}", columnLabel, currentRowIndex);
 
-        CosmosRow cosmosRow = rows.get(currentRowIndex);
+        int columnIndex = columnsIndexMap.entrySet()
+                .stream()
+                .filter(entry -> entry.getValue().name.equals(columnLabel))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(-1);
 
-        for (int i = 0; i < cosmosRow.getParsed().size(); i++) {
-            if (cosmosRow.getParsed().get(i).getLeft().equals(columnLabel)) {
-                return i;
-            }
+        if (columnIndex == -1) {
+            throw new SQLException("Column not found: " + columnLabel);
         }
 
-        throw new SQLException("Column not found: " + columnLabel);
+        return columnIndex;
     }
 
     @Override
@@ -436,7 +487,7 @@ public class CosmosDbResultSet implements ResultSet {
     @Override
     public boolean isAfterLast() throws SQLException {
         log.info("isAfterLast");
-        return currentRowIndex == rows.size();
+        return !iterator.hasNext() && currentRowIndex > localItems.size() - 1;
     }
 
     @Override
@@ -448,7 +499,7 @@ public class CosmosDbResultSet implements ResultSet {
     @Override
     public boolean isLast() throws SQLException {
         log.info("isLast");
-        return currentRowIndex == rows.size() - 1;
+        return !iterator.hasNext() && currentRowIndex == localItems.size() - 1;
     }
 
     @Override
@@ -460,21 +511,22 @@ public class CosmosDbResultSet implements ResultSet {
     @Override
     public void afterLast() throws SQLException {
         log.info("afterLast");
-        currentRowIndex = rows.size();
+        //TODO: calculate total and set +1
+        currentRowIndex = Integer.MAX_VALUE;
     }
 
     @Override
     public boolean first() throws SQLException {
         log.info("first");
         currentRowIndex = 0;
-        return !rows.isEmpty();
+        return !localItems.isEmpty();
     }
 
     @Override
     public boolean last() throws SQLException {
         log.info("last");
-        currentRowIndex = rows.size() - 1;
-        return !rows.isEmpty();
+        currentRowIndex = localItems.size() - 1;
+        return !localItems.isEmpty();
     }
 
     @Override
@@ -494,12 +546,18 @@ public class CosmosDbResultSet implements ResultSet {
             return false;
         }
 
-        if (newIndex >= rows.size()) {
-            currentRowIndex = rows.size();
+        if (newIndex >= localItems.size()) {
+            while (iterator.hasNext() && newIndex >= localItems.size()) {
+                localItems.addAll(fetchNext());
+            }
+        }
+
+        if (newIndex >= localItems.size()) {
+            currentRowIndex = localItems.size();
             return false;
         }
 
-        return currentRowIndex >= 0 && currentRowIndex < rows.size();
+        return currentRowIndex >= 0 && currentRowIndex < localItems.size();
     }
 
     @Override
@@ -513,12 +571,18 @@ public class CosmosDbResultSet implements ResultSet {
             return false;
         }
 
-        if (newIndex >= this.rows.size()) {
-            currentRowIndex = this.rows.size();
+        if (newIndex >= localItems.size()) {
+            while (iterator.hasNext() && newIndex >= localItems.size()) {
+                localItems.addAll(fetchNext());
+            }
+        }
+
+        if (newIndex >= localItems.size()) {
+            currentRowIndex = localItems.size();
             return false;
         }
 
-        return currentRowIndex >= 0 && currentRowIndex < this.rows.size();
+        return currentRowIndex >= 0 && currentRowIndex < this.localItems.size();
     }
 
     @Override
@@ -823,10 +887,8 @@ public class CosmosDbResultSet implements ResultSet {
     @Override
     public Object getObject(int columnIndex, Map<String, Class<?>> map) throws SQLException {
         log.info("getObject ma {} {}", columnIndex, map);
-
-        CosmosRow cosmosRow = rows.get(currentRowIndex);
-        Pair<String, Object> pair = cosmosRow.getParsed().get(columnIndex - 1);
-        return pair.getRight();
+        //TODO
+        return getObject(columnIndex);
     }
 
     @Override
@@ -851,33 +913,24 @@ public class CosmosDbResultSet implements ResultSet {
     public Array getArray(int columnIndex) throws SQLException {
         log.info("getArray {}", columnIndex);
 
-        CosmosRow cosmosRow = rows.get(currentRowIndex);
-        Pair<String, Object> pair = cosmosRow.getParsed().get(columnIndex - 1);
-        Object right = pair.getRight();
+        Object value = getValue(columnIndex);
 
-        if (right instanceof List) {
-            return connection.createArrayOf("ARRAY", ((List) right).toArray());
+        if (value instanceof List) {
+            return connection.createArrayOf("ARRAY", ((List) value).toArray());
         }
 
-        if (right instanceof Object[]) {
-            return connection.createArrayOf("ARRAY", (Object[]) right);
+        if (value instanceof Object[]) {
+            return connection.createArrayOf("ARRAY", (Object[]) value);
         }
 
-        return connection.createArrayOf("ARRAY", new Object[]{right});
+        return connection.createArrayOf("ARRAY", new Object[]{value});
     }
 
     @Override
     public Object getObject(String columnLabel, Map<String, Class<?>> map) throws SQLException {
         log.info("getObject malab {} {}", columnLabel, map);
 
-        CosmosRow cosmosRow = rows.get(currentRowIndex);
-        Pair<String, Object> pair = cosmosRow.getParsed().stream().filter(p -> p.getLeft().equals(columnLabel)).findFirst().orElse(null);
-
-        if (pair == null) {
-            throw new SQLException("Column not found: " + columnLabel);
-        }
-
-        return pair.getRight();
+        return getValue(findColumn(columnLabel));
     }
 
     @Override
@@ -901,142 +954,48 @@ public class CosmosDbResultSet implements ResultSet {
     @Override
     public Array getArray(String columnLabel) throws SQLException {
         log.info("getArray {}", columnLabel);
-
-        CosmosRow cosmosRow = rows.get(currentRowIndex);
-        Pair<String, Object> pair = cosmosRow.getParsed().stream().filter(p -> p.getLeft().equals(columnLabel)).findFirst().orElse(null);
-        Object right = pair.getRight();
-
-        if (right instanceof List) {
-            return connection.createArrayOf("ARRAY", ((List) right).toArray());
-        }
-
-        if (right instanceof Object[]) {
-            return connection.createArrayOf("ARRAY", (Object[]) right);
-        }
-
-        return connection.createArrayOf("ARRAY", new Object[]{right});
+        return getArray(findColumn(columnLabel));
     }
 
     @Override
     public Date getDate(int columnIndex, Calendar cal) throws SQLException {
         log.info("getDate {} {}", columnIndex, cal);
-
-        CosmosRow cosmosRow = rows.get(currentRowIndex);
-
-        Pair<String, Object> pair = cosmosRow.getParsed().get(columnIndex - 1);
-
-        Object right = pair.getRight();
-        if (right instanceof Date) {
-            return (Date) right;
-        }
-
-        if (right instanceof Long) {
-            return new Date((Long) right);
-        }
-
-        if (right instanceof String) {
-            return Date.valueOf((String) right);
-        }
-
-        if (right instanceof Calendar) {
-            return new Date(((Calendar) right).getTimeInMillis());
-        }
-
-        return null;
-
+        //TODO
+        return getDate(columnIndex);
     }
 
     @Override
     public Date getDate(String columnLabel, Calendar cal) throws SQLException {
         log.info("getDate {} {}", columnLabel, cal);
-
-        CosmosRow cosmosRow = rows.get(currentRowIndex);
-
-        Pair<String, Object> pair = cosmosRow.getParsed().stream().filter(p -> p.getLeft().equals(columnLabel)).findFirst().orElse(null);
-
-        if (pair == null) {
-            throw new SQLException("Column not found: " + columnLabel);
-        }
-
-        Object right = pair.getRight();
-
-        if (right instanceof Date) {
-            return (Date) right;
-        }
-
-        if (right instanceof Long) {
-            return new Date((Long) right);
-        }
-
-        if (right instanceof String) {
-            return Date.valueOf((String) right);
-        }
-
-        if (right instanceof Calendar) {
-            return new Date(((Calendar) right).getTimeInMillis());
-        }
-
-        return null;
+        return getDate(findColumn(columnLabel), cal);
     }
 
     @Override
     public Time getTime(int columnIndex, Calendar cal) throws SQLException {
         log.info("getTime {} {}", columnIndex, cal);
-
-        CosmosRow cosmosRow = rows.get(currentRowIndex);
-
-        Pair<String, Object> pair = cosmosRow.getParsed().get(columnIndex - 1);
-
-        Object right = pair.getRight();
-
-        return convertToTime(right);
+        //TODO: calendar not used
+        Object value = getValue(columnIndex);
+        return convertToTime(value);
     }
 
     @Override
     public Time getTime(String columnLabel, Calendar cal) throws SQLException {
         log.info("getTime {} {}", columnLabel, cal);
-
-        CosmosRow cosmosRow = rows.get(currentRowIndex);
-
-        Pair<String, Object> pair = cosmosRow.getParsed().stream().filter(p -> p.getLeft().equals(columnLabel)).findFirst().orElse(null);
-
-        if (pair == null) {
-            throw new SQLException("Column not found: " + columnLabel);
-        }
-
-        Object right = pair.getRight();
-
-        return convertToTime(right);
+        return getTime(findColumn(columnLabel), cal);
     }
 
     @Override
     public Timestamp getTimestamp(int columnIndex, Calendar cal) throws SQLException {
         log.info("getTimestamp {} {}", columnIndex, cal);
 
-        CosmosRow cosmosRow = rows.get(currentRowIndex);
-
-        Pair<String, Object> pair = cosmosRow.getParsed().get(columnIndex - 1);
-
-        Object right = pair.getRight();
-
-        return convertToTimestamp(right);
+        Object value = getValue(columnIndex);
+        return convertToTimestamp(value);
     }
 
     @Override
     public Timestamp getTimestamp(String columnLabel, Calendar cal) throws SQLException {
         log.info("getTimestamp {} {}", columnLabel, cal);
-
-        CosmosRow cosmosRow = rows.get(currentRowIndex);
-
-        Pair<String, Object> pair = cosmosRow.getParsed().stream().filter(p -> p.getLeft().equals(columnLabel)).findFirst().orElse(null);
-
-        if (pair == null) {
-            throw new SQLException("Column not found: " + columnLabel);
-        }
-
-        Object right = pair.getRight();
-
-        return convertToTimestamp(right);
+        return getTimestamp(findColumn(columnLabel), cal);
     }
 
     @Override
@@ -1417,26 +1376,23 @@ public class CosmosDbResultSet implements ResultSet {
     public <T> T getObject(int columnIndex, Class<T> type) throws SQLException {
         log.info("getObject types t {} {}", columnIndex, type);
 
-        CosmosRow cosmosRow = rows.get(currentRowIndex);
+        Object object = getObject(columnIndex);
 
-        Pair<String, Object> pair = cosmosRow.getParsed().get(columnIndex - 1);
+        if (object == null) {
+            return null;
+        }
 
-        return (T) pair.getRight();
+        if (type.isInstance(object)) {
+            return (T) object;
+        }
+
+        return null;
     }
 
     @Override
     public <T> T getObject(String columnLabel, Class<T> type) throws SQLException {
         log.info("getObject tpy tpe {} {}", columnLabel, type);
-
-        CosmosRow cosmosRow = rows.get(currentRowIndex);
-
-        Pair<String, Object> pair = cosmosRow.getParsed().stream().filter(p -> p.getLeft().equals(columnLabel)).findFirst().orElse(null);
-
-        if (pair == null) {
-            throw new SQLException("Column not found: " + columnLabel);
-        }
-
-        return (T) pair.getRight();
+        return getObject(findColumn(columnLabel), type);
     }
 
     @Override
@@ -1494,8 +1450,8 @@ public class CosmosDbResultSet implements ResultSet {
     @Override
     public String toString() {
         return "CosmosDbResultSet{" +
-                "rows=" + rows +
-                ", columns=" + columns +
+                "rows=" + localItems +
+                ", columns=" + columnsIndexMap.values() +
                 '}';
     }
 }
