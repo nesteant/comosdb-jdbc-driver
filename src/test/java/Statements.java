@@ -89,6 +89,15 @@
 //    }
 //
 //    @Test
+//    public void prepareUpdate() throws SQLException {
+//        conn.setCatalog(defaultCatalog);
+//        PreparedStatement statement = conn.prepareStatement("UPDATE orders t SET t.externalOrderNumber = ? WHERE t.id LIKE ? ESCAPE '#'");
+//        statement.setObject(1, "testtest");
+//        statement.setObject(2, "56547131-1635-4045-87f3-6661a8b7eacb");
+//        statement.executeUpdate();
+//    }
+//
+//    @Test
 //    public void test2() throws SQLException {
 //        Statement statement1 = conn.createStatement();
 //        boolean execute1 = statement1.execute("select * from pharmacies where pharmacies.test = 'test12'");

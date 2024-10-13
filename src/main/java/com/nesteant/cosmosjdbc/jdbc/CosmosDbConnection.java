@@ -29,6 +29,10 @@ public class CosmosDbConnection implements Connection {
         return new CosmosDbConnection(url, info);
     }
 
+    public CosmosDatabase getCurrentDatabase() {
+        return currentDatabase;
+    }
+
     public CosmosDbConnection(String url, Properties info) {
         String connectionString = url.replace("jdbc:cosmosdb:", "");
 

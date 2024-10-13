@@ -48,6 +48,13 @@
 //        }
 //    }
 //
+//
+//    @Test
+//    public void testPrimaryKeys() throws SQLException {
+//        CosmosDbDatabaseMetadata metadata = new CosmosDbDatabaseMetadata((CosmosDbConnection) conn);
+//        ResultSet tables = metadata.getPrimaryKeys(defaultCatalog, "", "tt");
+//    }
+//
 //    @Test
 //    public void testGetTables() throws SQLException {
 //        CosmosDbDatabaseMetadata metadata = new CosmosDbDatabaseMetadata((CosmosDbConnection) conn);

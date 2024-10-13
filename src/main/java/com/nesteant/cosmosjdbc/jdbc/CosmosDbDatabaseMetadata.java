@@ -10,6 +10,7 @@ import com.nesteant.cosmosjdbc.jdbc.models.CosmosSqlColumn;
 import com.nesteant.cosmosjdbc.jdbc.resultset.AsyncCosmosSqlResultSet;
 import com.nesteant.cosmosjdbc.jdbc.resultset.SimpleCosmosSqlResultSet;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.mutable.MutableInt;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -218,7 +219,7 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public boolean supportsColumnAliasing() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
@@ -263,11 +264,6 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public boolean supportsGroupByUnrelated() throws SQLException {
-//        erb var1 = (new pob()).a(this.b, 1, "SELECT VALUE FROM sys_sqlinfo WHERE NAME = 'GROUP_BY'");
-//        eib var2 = var1.a(var1.i());
-//        var2.i();
-//        String var3 = var2.d(0).toString();
-//        return var3.equalsIgnoreCase("NO_RELATION");
         return true;
     }
 
@@ -303,12 +299,12 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public boolean supportsCoreSQLGrammar() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsExtendedSQLGrammar() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
@@ -318,12 +314,12 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public boolean supportsANSI92IntermediateSQL() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsANSI92FullSQL() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
@@ -333,21 +329,11 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public boolean supportsOuterJoins() throws SQLException {
-//        erb var1 = (new pob()).a(this.b, 1, "SELECT VALUE FROM sys_sqlinfo WHERE NAME = 'OUTER_JOINS'");
-//        eib var2 = var1.a(var1.i());
-//        var2.i();
-//        String var3 = var2.d(0).toString();
-//        return var3.equalsIgnoreCase("YES");
         return false;
     }
 
     @Override
     public boolean supportsFullOuterJoins() throws SQLException {
-//        erb var1 = (new pob()).a(this.b, 1, "SELECT VALUE FROM sys_sqlinfo WHERE NAME = 'OJ_CAPABILITIES'");
-//        eib var2 = var1.a(var1.i());
-//        var2.i();
-//        String var3 = var2.d(0).toString();
-//        return var3.equalsIgnoreCase("NESTED");
         return false;
     }
 
@@ -359,7 +345,7 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
     @Override
     public String getSchemaTerm() throws SQLException {
         //Not supported
-        return "schema";
+        return "container";
     }
 
     @Override
@@ -440,7 +426,7 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public boolean supportsPositionedUpdate() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
@@ -717,170 +703,12 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
     public ResultSet getProcedures(String catalog, String schemaPattern, String procedureNamePattern) throws SQLException {
         log.info("getProcedures catalog: {}, schemaPattern: {}, procedureNamePattern: {}", catalog, schemaPattern, procedureNamePattern);
         return new SimpleCosmosSqlResultSet(connection);
-//        String var4;
-//        if (this.b.aa() >= 5) {
-//            var4 = "DatabaseMetaData.getProcedures(";
-//            var4 = var4 + "catalog:" + (var1 == null ? "<null>" : "'" + var1 + "'");
-//            var4 = var4 + ", schema:" + (var2 == null ? "<null>" : "'" + var2 + "'");
-//            var4 = var4 + ", procedureNamePattern:" + (var3 == null ? "<null>" : "'" + var3 + "'");
-//            var4 = var4 + ")";
-//            this.b.a(5, sre.E, var4);
-//        }
-//
-//        try {
-//            var4 = "SELECT * FROM sys_procedures";
-//            byte var5 = -1;
-//            fjc[] var6 = ujc.o;
-//            StringBuilder var7 = new StringBuilder();
-//            var7.append("SELECT \n");
-//            StringBuilder var10001 = (new StringBuilder()).append("CatalogName AS ");
-//            int var15 = var5 + 1;
-//            var7.append(var10001.append(this.a(var6, var15)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("SchemaName AS ");
-//            ++var15;
-//            var7.append(var10001.append(this.a(var6, var15)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("ProcedureName AS ");
-//            ++var15;
-//            var7.append(var10001.append(this.a(var6, var15)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("NULL AS ");
-//            ++var15;
-//            var7.append(var10001.append(this.a(var6, var15)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("NULL AS ");
-//            ++var15;
-//            var7.append(var10001.append(this.a(var6, var15)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("NULL AS ");
-//            ++var15;
-//            var7.append(var10001.append(this.a(var6, var15)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("Description AS ");
-//            ++var15;
-//            var7.append(var10001.append(this.a(var6, var15)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("CASE ProcedureType WHEN 'PROCEDURE' THEN 2 WHEN 'FUNCTION' THEN 1 ELSE 0 END AS ");
-//            ++var15;
-//            var7.append(var10001.append(this.a(var6, var15)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("ProcedureName AS ");
-//            ++var15;
-//            var7.append(var10001.append(this.a(var6, var15)).append("\n").toString());
-//            var7.append("FROM \n");
-//            var7.append("sys_procedures");
-//            String var8 = var7.toString();
-//            erb var9 = a(this.b, var4, new String[]{"CatalogName", "SchemaName", "ProcedureName"}, new String[]{var1, var2, var3});
-//            eib var10 = var9.a(var9.i());
-//            vmb var11 = mmb.a(var8).b();
-//            dgc.b var12 = new dgc.b(ujc.o);
-//            ldc var13 = this.a.createClassFactory();
-//            return var13.createResultSet(this.a((vmb)var11, (eib)var10, (dac)null, (ijc)var12), this.a);
-//        } catch (Exception var14) {
-//            throw mgc.a(var14);
-//        }
-//        return null;
     }
 
     @Override
     public ResultSet getProcedureColumns(String catalog, String schemaPattern, String procedureNamePattern, String columnNamePattern) throws SQLException {
         log.info("getProcedureColumns catalog: {}, schemaPattern: {}, procedureNamePattern: {}, columnNamePattern: {}", catalog, schemaPattern, procedureNamePattern, columnNamePattern);
         return new SimpleCosmosSqlResultSet(connection);
-
-//        if (this.b.aa() >= 5) {
-//            String var5 = "DatabaseMetaData.getProcedureColumns(";
-//            var5 = var5 + "catalog:" + (var1 == null ? "<null>" : "'" + var1 + "'");
-//            var5 = var5 + ", schemaPattern:" + (var2 == null ? "<null>" : "'" + var2 + "'");
-//            var5 = var5 + ", procedureNamePattern:" + (var3 == null ? "<null>" : "'" + var3 + "'");
-//            var5 = var5 + ", columnNamePattern:" + (var4 == null ? "<null>" : "'" + var4 + "'");
-//            var5 = var5 + ")";
-//            this.b.a(5, sre.E, var5);
-//        }
-//
-//        try {
-//            ntb var18 = new ntb();
-//            String var6 = "SELECT * FROM sys_procedureparameters";
-//            byte var7 = -1;
-//            fjc[] var8 = ujc.p;
-//            StringBuilder var9 = new StringBuilder();
-//            var9.append("SELECT \n");
-//            StringBuilder var10001 = (new StringBuilder()).append("CatalogName AS ");
-//            int var19 = var7 + 1;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("SchemaName AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("ProcedureName AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("ColumnName AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("CAST(Direction AS SHORT) AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(", ").toString());
-//            var10001 = (new StringBuilder()).append("DataType AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("DataTypeName AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("NumericPrecision AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("Length AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("CAST(NumericScale AS SHORT) AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("10 AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("CASE WHEN IsNullable = TRUE THEN '1' ELSE '0' END AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("Description AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("NULL AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("NULL AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("NULL AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("NULL AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("Ordinal AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("CASE WHEN IsNullable = TRUE THEN 'YES' ELSE 'NO' END AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("NULL AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("SupportsStreams AS ");
-//            ++var19;
-//            var9.append(var10001.append(this.a(var8, var19)).append(",\n").toString());
-//            var9.append("FROM \n");
-//            var9.append("sys_procedureparameters");
-//            String var10 = var9.toString();
-//            String var11 = null;
-//            if (!bte.H(var3)) {
-//                StringBuilder var12 = new StringBuilder();
-//                bte.a(var3, var12);
-//                var11 = var12.toString();
-//            }
-//
-//            erb var20 = a(this.b, var6, new String[]{"CatalogName", "SchemaName", "ProcedureName", "ColumnName"}, new String[]{var1, var2, var11, var4});
-//            eib var13 = var20.a(var20.i());
-//            vmb var14 = mmb.a(var10).b();
-//            dgc.b var15 = new dgc.b(ujc.p);
-//            var18.a(this.a((vmb)var14, (eib)var13, (dac)null, (ijc)var15));
-//            ldc var16 = this.a.createClassFactory();
-//            return var16.createResultSet(var18, this.a);
-//        } catch (Exception var17) {
-//            throw mgc.a(var17);
-//        }
-//        return null;
     }
 
     @Override
@@ -1023,29 +851,6 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
     public ResultSet getColumnPrivileges(String catalog, String schema, String table, String columnNamePattern) throws SQLException {
         log.info("getColumnPrivileges catalog: {}, schema: {}, table: {}, columnNamePattern: {}", catalog, schema, table, columnNamePattern);
         return new SimpleCosmosSqlResultSet(connection);
-//        if (this.b.aa() >= 5) {
-//            String var5 = "DatabaseMetaData.getColumnPrivileges(";
-//            var5 = var5 + "catalog:" + (var1 == null ? "<null>" : "'" + var1 + "'");
-//            var5 = var5 + ", schema:" + (var2 == null ? "<null>" : "'" + var2 + "'");
-//            var5 = var5 + ", table:" + (var3 == null ? "<null>" : "'" + var3 + "'");
-//            var5 = var5 + ", columnNamePattern:" + (var4 == null ? "<null>" : "'" + var4 + "'");
-//            var5 = var5 + ")";
-//            this.b.a(5, sre.E, var5);
-//        }
-//
-//        try {
-//            Vector var9 = new Vector();
-//            if (this.a(var1) && this.b(var2) && !bte.H(var3) && !bte.H(var4)) {
-//                var9.add(a((Object[])(new String[]{var1, var2, var3, var4, null, null, null, null})));
-//            }
-//
-//            eib var6 = this.a(ujc.c, var9);
-//            ldc var7 = this.a.createClassFactory();
-//            return var7.createResultSet(var6, this.a);
-//        } catch (Exception var8) {
-//            throw mgc.a(var8);
-//        }
-//        return null;
     }
 
     @Override
@@ -1068,7 +873,7 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
                 put("COLUMN_SIZE", 255);
                 put("BUFFER_LENGTH", 255);
                 put("DECIMAL_DIGITS", 0);
-                put("PSEUDO_COLUMN", 1);
+                put("PSEUDO_COLUMN", 0);
             }});
         }};
 
@@ -1085,16 +890,38 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
     public ResultSet getPrimaryKeys(String catalog, String schema, String table) throws SQLException {
         log.info("getPrimaryKeys catalog: {}, schema: {}, table: {}", catalog, schema, table);
         CosmosContainerResponse read = connection.databases.get(catalog).getContainer(table).read();
+
+        List<String> paths = read.getProperties().getPartitionKeyDefinition().getPaths();
+
+        MutableInt seq = new MutableInt(1);
+        List<LinkedHashMap> additionalIndices = paths.stream()
+                .map(path -> path.substring(1))
+                .map(path -> path.split("/")[0])
+                .map((path) -> {
+                    seq.increment();
+                    return new LinkedHashMap() {{
+                        put("TABLE_CAT", catalog);
+                        put("TABLE_SCHEM", null);
+                        put("TABLE_NAME", table);
+                        put("COLUMN_NAME", path);
+                        put("KEY_SEQ", seq.intValue());
+                        put("PK_NAME", read.getProperties().getId());
+                    }};
+                })
+                .collect(Collectors.toList());
+        log.info("getPrimaryKeys paths: {}", paths);
         List<LinkedHashMap> rowList = new ArrayList<LinkedHashMap>() {{
             add(new LinkedHashMap<String, Object>() {{
                 put("TABLE_CAT", catalog);
                 put("TABLE_SCHEM", null);
                 put("TABLE_NAME", table);
-                put("COLUMN_NAME", "id");
+                put("COLUMN_NAME", read.getProperties().getId());
                 put("KEY_SEQ", 1);
-                put("PK_NAME", "id");
+                put("PK_NAME", read.getProperties().getId());
             }});
         }};
+
+        rowList.addAll(additionalIndices);
 
         return new SimpleCosmosSqlResultSet(connection, rowList);
     }
@@ -1103,79 +930,18 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
     public ResultSet getImportedKeys(String catalog, String schema, String table) throws SQLException {
         log.info("getImportedKeys catalog: {}, schema: {}, table: {}", catalog, schema, table);
         return new SimpleCosmosSqlResultSet(connection);
-//        if (this.b.aa() >= 5) {
-//            String var4 = "DatabaseMetaData.getImportedKeys(";
-//            var4 = var4 + "catalog:" + (var1 == null ? "<null>" : "'" + var1 + "'");
-//            var4 = var4 + ", schema:" + (var2 == null ? "<null>" : "'" + var2 + "'");
-//            var4 = var4 + ", table:" + (var3 == null ? "<null>" : "'" + var3 + "'");
-//            var4 = var4 + ")";
-//            this.b.a(5, sre.E, var4);
-//        }
-//
-//        try {
-//            Vector var8 = this.a(var1, var2, var3);
-//            eib var5 = this.a(ujc.n, var8);
-//            ldc var6 = this.a.createClassFactory();
-//            return var6.createResultSet(var5, this.a);
-//        } catch (Exception var7) {
-//            throw mgc.a(var7);
-//        }
-//        return null;
     }
 
     @Override
     public ResultSet getExportedKeys(String catalog, String schema, String table) throws SQLException {
         log.info("getExportedKeys catalog: {}, schema: {}, table: {}", catalog, schema, table);
         return new SimpleCosmosSqlResultSet(connection);
-//        if (this.b.aa() >= 5) {
-//            String var4 = "DatabaseMetaData.getExportedKeys(";
-//            var4 = var4 + "catalog:" + (var1 == null ? "<null>" : "'" + var1 + "'");
-//            var4 = var4 + ", schema:" + (var2 == null ? "<null>" : "'" + var2 + "'");
-//            var4 = var4 + ", table:" + (var3 == null ? "<null>" : "'" + var3 + "'");
-//            var4 = var4 + ")";
-//            this.b.a(5, sre.E, var4);
-//        }
-//
-//        try {
-//            Vector var8 = this.b(var1, var2, var3);
-//            eib var5 = this.a(ujc.n, var8);
-//            ldc var6 = this.a.createClassFactory();
-//            return var6.createResultSet(var5, this.a);
-//        } catch (Exception var7) {
-//            throw mgc.a(var7);
-//        }
-//        return null;
     }
 
     @Override
     public ResultSet getCrossReference(String parentCatalog, String parentSchema, String parentTable, String foreignCatalog, String foreignSchema, String foreignTable) throws SQLException {
         log.info("getCrossReference parentCatalog: {}, parentSchema: {}, parentTable: {}, foreignCatalog: {}, foreignSchema: {}, foreignTable: {}", parentCatalog, parentSchema, parentTable, foreignCatalog, foreignSchema, foreignTable);
         return new SimpleCosmosSqlResultSet(connection);
-//        if (this.b.aa() >= 5) {
-//            String var7 = "DatabaseMetaData.getCrossReference(";
-//            var7 = var7 + "primaryCatalog:" + (var1 == null ? "<null>" : "'" + var1 + "'");
-//            var7 = var7 + ", primarySchema:" + (var2 == null ? "<null>" : "'" + var2 + "'");
-//            var7 = var7 + ", primaryTable:" + (var3 == null ? "<null>" : "'" + var3 + "'");
-//            var7 = var7 + ", foreignCatalog:" + (var4 == null ? "<null>" : "'" + var4 + "'");
-//            var7 = var7 + ", foreignSchema:" + (var5 == null ? "<null>" : "'" + var5 + "'");
-//            var7 = var7 + ", foreignTable:" + (var6 == null ? "<null>" : "'" + var6 + "'");
-//            var7 = var7 + ")";
-//            this.b.a(5, sre.E, var7);
-//        }
-//
-//        try {
-//            Vector var11 = new Vector();
-//            if (this.a(var1) && this.a(var4) && this.b(var2) && this.b(var5)) {
-//                var11.add(a(new Object[]{var1, var2, var3, null, var4, var5, var6, null, Short.valueOf((short)1), Short.valueOf((short)3), Short.valueOf((short)3), null, null, Short.valueOf((short)7)}));
-//            }
-//
-//            eib var8 = this.a(ujc.h, var11);
-//            ldc var9 = this.a.createClassFactory();
-//            return var9.createResultSet(var8, this.a);
-//        } catch (Exception var10) {
-//            throw mgc.a(var10);
-//        }
-//        return null;
     }
 
     @Override
@@ -1188,74 +954,6 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
     public ResultSet getIndexInfo(String catalog, String schema, String table, boolean unique, boolean approximate) throws SQLException {
         log.info("getIndexInfo catalog: {}, schema: {}, table: {}, unique: {}, approximate: {}", catalog, schema, table, unique, approximate);
         return new SimpleCosmosSqlResultSet(connection);
-//        String var6;
-//        if (this.b.aa() >= 5) {
-//            var6 = "DatabaseMetaData.getIndexInfo(";
-//            var6 = var6 + "catalog:" + (var1 == null ? "<null>" : "'" + var1 + "'");
-//            var6 = var6 + ", schema:" + (var2 == null ? "<null>" : "'" + var2 + "'");
-//            var6 = var6 + ", table:" + (var3 == null ? "<null>" : "'" + var3 + "'");
-//            var6 = var6 + ")";
-//            this.b.a(5, sre.E, var6);
-//        }
-//
-//        try {
-//            var6 = "SELECT * FROM sys_indexes";
-//            String[] var7 = new String[]{"CatalogName", "SchemaName", "TableName"};
-//            String[] var8 = new String[]{var1, var2, var3};
-//            erb var9 = a(this.b, var6, var7, var8);
-//            eib var10 = var9.a(var9.i());
-//            byte var11 = -1;
-//            fjc[] var12 = ujc.j;
-//            StringBuilder var13 = new StringBuilder();
-//            var13.append("SELECT \n");
-//            StringBuilder var10001 = (new StringBuilder()).append("CatalogName AS ");
-//            int var17 = var11 + 1;
-//            var13.append(var10001.append(this.a(var12, var17)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("SchemaName AS ");
-//            ++var17;
-//            var13.append(var10001.append(this.a(var12, var17)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("TableName AS ");
-//            ++var17;
-//            var13.append(var10001.append(this.a(var12, var17)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("CASE IsUnique WHEN true THEN false ELSE true END AS ");
-//            ++var17;
-//            var13.append(var10001.append(this.a(var12, var17)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("'' AS ");
-//            ++var17;
-//            var13.append(var10001.append(this.a(var12, var17)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("IndexName AS ");
-//            ++var17;
-//            var13.append(var10001.append(this.a(var12, var17)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("Type AS ");
-//            ++var17;
-//            var13.append(var10001.append(this.a(var12, var17)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("CAST(EXPR(Ordinal_Position + 1) AS SHORT) AS ");
-//            ++var17;
-//            var13.append(var10001.append(this.a(var12, var17)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("ColumnName AS ");
-//            ++var17;
-//            var13.append(var10001.append(this.a(var12, var17)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("SortOrder AS ");
-//            ++var17;
-//            var13.append(var10001.append(this.a(var12, var17)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("1 AS ");
-//            ++var17;
-//            var13.append(var10001.append(this.a(var12, var17)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("0 AS ");
-//            ++var17;
-//            var13.append(var10001.append(this.a(var12, var17)).append(",\n").toString());
-//            var10001 = (new StringBuilder()).append("NULL AS ");
-//            ++var17;
-//            var13.append(var10001.append(this.a(var12, var17)).append("\n").toString());
-//            var13.append("FROM \n");
-//            var13.append("sys_indexes");
-//            pmb var14 = mmb.a(var13.toString()).g();
-//            dgc.b var15 = new dgc.b(ujc.j);
-//            return this.a.createClassFactory().createResultSet(this.a((vmb)var14, (eib)var10, (dac)null, (ijc)var15), this.a);
-//        } catch (Exception var16) {
-//            throw mgc.a(var16);
-//        }
-//        return null;
     }
 
     @Override
@@ -1366,30 +1064,6 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
     public ResultSet getAttributes(String catalog, String schemaPattern, String typeNamePattern, String attributeNamePattern) throws SQLException {
         log.info("getAttributes catalog: {}, schemaPattern: {}, typeNamePattern: {}, attributeNamePattern: {}", catalog, schemaPattern, typeNamePattern, attributeNamePattern);
         return new SimpleCosmosSqlResultSet(connection);
-//        if (this.b.aa() >= 5) {
-//            String var5 = "DatabaseMetaData.getAttributes(";
-//            var5 = var5 + "catalog:" + (var1 == null ? "<null>" : "'" + var1 + "'");
-//            var5 = var5 + ", schemaPattern:" + (var2 == null ? "<null>" : "'" + var2 + "'");
-//            var5 = var5 + ", typeNamePattern:" + (var3 == null ? "<null>" : "'" + var3 + "'");
-//            var5 = var5 + ", attributeNamePattern:" + (var4 == null ? "<null>" : "'" + var4 + "'");
-//            var5 = var5 + ")";
-//            this.b.a(5, sre.E, var5);
-//        }
-//
-//        try {
-//            Vector var10 = new Vector();
-//            if (this.a(var1) && this.b(var2)) {
-//                Vector var6 = a(new Object[]{var1, var2, var3, var4, 12, null, null, 5, 10, 2, null, null, null, null, 1000, 1, "", null, null, null, null});
-//                var10.add(var6);
-//            }
-//
-//            eib var9 = this.a(ujc.d, var10);
-//            ldc var7 = this.a.createClassFactory();
-//            return var7.createResultSet(var9, this.a);
-//        } catch (Exception var8) {
-//            throw mgc.a(var8);
-//        }
-//        return null;
     }
 
     @Override
@@ -1406,19 +1080,6 @@ public class CosmosDbDatabaseMetadata implements DatabaseMetaData {
     @Override
     public ResultSet getClientInfoProperties() throws SQLException {
         log.info("getClientInfoProperties");
-//        if (this.b.aa() >= 5) {
-//            String var1 = "DatabaseMetaData.getClientInfoProperties()";
-//            this.b.a(5, sre.E, var1);
-//        }
-//
-//        try {
-//            Vector var5 = new Vector();
-//            eib var2 = this.a(ujc.g, var5);
-//            ldc var3 = this.a.createClassFactory();
-//            return var3.createResultSet(var2, this.a);
-//        } catch (Exception var4) {
-//            throw mgc.a(var4);
-//        }
         return new SimpleCosmosSqlResultSet(connection);
     }
 
