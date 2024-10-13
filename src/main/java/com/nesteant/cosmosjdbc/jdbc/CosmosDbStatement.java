@@ -44,6 +44,7 @@ public class CosmosDbStatement implements Statement {
         CosmosPagedIterable<LinkedHashMap> objects = connection.currentDatabase.getContainer(cosmosSql.getContainer())
                 .queryItems(cosmosSql.getSql(), options, LinkedHashMap.class);
         resultSet = AsyncCosmosSqlResultSet.create(connection, objects, this.fetchSize);
+        log.info("Result set: {}", resultSet);
         return resultSet;
     }
 
@@ -361,9 +362,11 @@ public class CosmosDbStatement implements Statement {
             String whereString = "";
             if (where != null) {
                 whereString += " WHERE " + where;
+                log.info("Where: {}", whereString);
+                basicQuery += " %s";
             }
 
-            String formattedSql = String.format(basicQuery, whereString, 0, fetchSize);
+            String formattedSql = String.format(basicQuery, whereString);
             log.info("Table: {} DBLinkName: {} SchemaName: {} Alias: {}. Cosmos sql {}", tableName, dbLinkName, schemaName, alias, formattedSql);
             return new CosmosSql(formattedSql, tableName, connection.currentDatabase.getId());
         }
